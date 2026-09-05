@@ -65,11 +65,18 @@ Two ways. Pick one.
    **Import a repository**.
 2. Pick `empireproperties/Sukoon_Crystal`.
 3. Set:
-   - **Root directory:** `client`
-   - **Build command:** `npm ci && npm run build`
+   - **Root directory:** `client` — not the repository root, and not `server`.
+     Cloudflare runs the build from inside this folder, so pointing it at
+     `server` fails with `npm error Missing script: "build"`: the API has no
+     build step, only the storefront does.
+   - **Build command:** `npm run build` — Cloudflare runs `npm clean-install`
+     itself beforehand, so there is no need to add `npm ci` here.
    - **Deploy command:** `npx wrangler deploy`
 4. Create it. The first build will succeed but the shop will be empty — the API
    address is not set yet. That is step 3.
+
+The API is **not** deployed from Cloudflare. It goes on the Node host in step 1,
+and this Worker forwards to it.
 
 ### Option 2 — deploy from this machine
 
