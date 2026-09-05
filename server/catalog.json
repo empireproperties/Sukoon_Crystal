@@ -1,0 +1,1055 @@
+{
+  "categories": [
+    {
+      "slug": "wellness-bracelets",
+      "name": "Wellness Bracelets",
+      "tagline": "Everyday remedies, worn on the wrist"
+    },
+    {
+      "slug": "zodiac-bracelets",
+      "name": "Zodiac Bracelets",
+      "tagline": "Stones chosen for your birth sign"
+    },
+    {
+      "slug": "rudraksha",
+      "name": "Rudraksha",
+      "tagline": "Authentic beads, energised with mantra"
+    },
+    {
+      "slug": "sukoon-special",
+      "name": "Sukoon Special",
+      "tagline": "Charging plates, trees & rituals"
+    }
+  ],
+  "products": [
+    {
+      "shopifyId": 8491865079862,
+      "name": "Sukoon Healing Bath Salt",
+      "slug": "sukoon-healing-bath-salt",
+      "category": "sukoon-special",
+      "price": 499,
+      "mrp": 599,
+      "stone": "Himalayan salt & essential oils",
+      "stones": [],
+      "description": "Experience relaxation with Sukoon CrystalSolutions Crystal Infused Bath Salt. This set includes 4 premium bath salt packets of 120g each, specially crafted to help you unwind, relax, and refresh your mind and body. Fragrances included: Rose Lavender Green Grass Sandalwood Each fragrance is designed to create a calming self-care experience, making your bath routine feel luxurious, soothing, and stress-relieving. Perfect for relaxation, gifting, and everyday wellness.",
+      "benefits": [
+        "Experience relaxation with Sukoon CrystalSolutions Crystal Infused Bath Salt",
+        "Includes 4 premium bath salt packets of 120g each, specially crafted to help you unwind, relax, and refresh your mind and body",
+        "Fragrances included: Rose Lavender Green Grass Sandalwood Each fragrance is designed to create a calming self-care experience, making your bath routine feel luxurious, soothing, and stress-relieving"
+      ],
+      "chakra": "Crown",
+      "element": "Aether",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/hf_20260415_090357_ba4419c5-32a9-4e4d-a8f9-2e13484642f8.png?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/hf_20260415_085811_67d72a1e-7838-4257-9855-a2c3232c1401_1.png?width=1000"
+      ],
+      "published": "2026-04-15T14:37:18+05:30",
+      "order": 0
+    },
+    {
+      "shopifyId": 8491680890934,
+      "name": "Personalised Crystal Energy Bracelet",
+      "slug": "personalised-crystal-energy-bracelet",
+      "category": "wellness-bracelets",
+      "price": 1250,
+      "mrp": 1750,
+      "stone": "Chosen for you after a call",
+      "stones": [],
+      "description": "The Customised Bracelet is thoughtfully created based on your personal needs, intentions, and energy goals. Whether you are looking for love, protection, confidence, success, peace, healing, or wealth, our experts carefully select the right crystals and design a bracelet specially for you. Each bracelet is personally energized by our certified astrologer to align with your intentions and help you attract positive energy in your daily life. Once you place your order, our team will personally reach out to understand your preferences, concerns, and the specific areas you want to work on, so we can create a bracelet that truly feels made for you.",
+      "benefits": [
+        "The Customised Bracelet is thoughtfully created based on your personal needs, intentions, and energy goals",
+        "Whether you are looking for love, protection, confidence, success, peace, healing, or wealth, our experts carefully select the right crystals and design a bracelet specially for you",
+        "Each bracelet is personally energized by our certified astrologer to align with your intentions and help you attract positive energy in your daily life"
+      ],
+      "chakra": "Earth",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/hf_20260415_084857_a7c37e0c-c2b1-42e4-a20e-4a2b8c8e3ca3.png?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/hf_20260415_083741_d0b27eb0-2411-46cf-b179-909fb7457532.png?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/hf_20260415_084111_2aa39b82-7a41-480b-b832-789ff61cc518.png?width=1000"
+      ],
+      "published": "2026-04-15T14:15:22+05:30",
+      "order": 1
+    },
+    {
+      "shopifyId": 7940042752054,
+      "name": "Pisces: The Dream Bracelet (Feb 19-Mar 20)",
+      "slug": "pisces-the-dream-bracelet-february-19-march-20",
+      "category": "zodiac-bracelets",
+      "price": 999,
+      "mrp": 1399,
+      "stone": "Yellow Calcite, Citrine & Sunstone",
+      "stones": [
+        "Yellow Calcite",
+        "Citrine",
+        "Sunstone"
+      ],
+      "description": "Pisces Zodiac Bracelet. Featuring Sunstone, Citrine, and Yellow Calcite, this piece fuels your creativity and brings an optimistic energy. It helps Pisces turn their visions into reality with joy and purpose.",
+      "benefits": [
+        "Helps Pisces turn their visions into reality with joy and purpose"
+      ],
+      "chakra": "Solar Plexus",
+      "element": "Fire",
+      "zodiac": [
+        "pisces"
+      ],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Pisces-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Pisces-2.webp?width=1000"
+      ],
+      "published": "2025-09-16T16:54:21+05:30",
+      "order": 2
+    },
+    {
+      "shopifyId": 7940040785974,
+      "name": "Aquarius: The Vision Bracelet (Jan 20 - Feb 18)",
+      "slug": "aquarius-the-vision-bracelet-january-20-february-18",
+      "category": "zodiac-bracelets",
+      "price": 999,
+      "mrp": 1399,
+      "stone": "Lapis Lazuli, Grey Quartz, Black Onyx & Amethyst",
+      "stones": [
+        "Lapis Lazuli",
+        "Grey Quartz",
+        "Black Onyx",
+        "Amethyst",
+        "Aquamarine"
+      ],
+      "description": "Aquarius Zodiac Bracelet. Featuring Grey Quartz, Amethyst, Lapis Lazuli, Aquamarine, and Black Onyx, this piece enhances clarity, intuition, and communication. It empowers Aquarius to think freely and connect with their higher self.",
+      "benefits": [
+        "Empowers Aquarius to think freely and connect with their higher self"
+      ],
+      "chakra": "Third Eye",
+      "element": "Air",
+      "zodiac": [
+        "aquarius"
+      ],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Aquarius-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Aquarius-2.webp?width=1000"
+      ],
+      "published": "2025-09-16T16:53:15+05:30",
+      "order": 3
+    },
+    {
+      "shopifyId": 7940039934006,
+      "name": "Capricorn: The Ambition Bracelet (Dec 22 - Jan 19)",
+      "slug": "capricorn-the-ambition-bracelet-december-22-january-19",
+      "category": "zodiac-bracelets",
+      "price": 999,
+      "mrp": 1399,
+      "stone": "Black Tourmaline, Lapis Lazuli, Tiger Eye & Aquamarine",
+      "stones": [
+        "Black Tourmaline",
+        "Lapis Lazuli",
+        "Tiger Eye",
+        "Aquamarine"
+      ],
+      "description": "Capricorn Zodiac Bracelet. Featuring Black Tourmaline, Tiger Eye, Aquamarine, and Lapis Lazuli, this piece provides protection, focus, and clear communication. It helps Capricorns achieve their goals with strength and wisdom.",
+      "benefits": [
+        "Helps Capricorns achieve their goals with strength and wisdom"
+      ],
+      "chakra": "Solar Plexus",
+      "element": "Fire",
+      "zodiac": [
+        "capricorn"
+      ],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Capricon-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Capricon-2.webp?width=1000"
+      ],
+      "published": "2025-09-16T16:51:48+05:30",
+      "order": 4
+    },
+    {
+      "shopifyId": 7940039704630,
+      "name": "Sagittarius: The Adventure Bracelet (Nov 22 - Dec 21)",
+      "slug": "sagittarius-the-adventure-bracelet-november-22-december-21",
+      "category": "zodiac-bracelets",
+      "price": 999,
+      "mrp": 1399,
+      "stone": "Yellow Calcite, Amethyst, Citrine & Carnelian",
+      "stones": [
+        "Yellow Calcite",
+        "Amethyst",
+        "Citrine",
+        "Carnelian"
+      ],
+      "description": "Sagittarius Zodiac Bracelet. Featuring Citrine, Yellow Calcite, Carnelian, and Amethyst, this piece fuels your zest for life and wisdom. It's the perfect companion for Sagittarius to explore new horizons with joy and clarity.",
+      "benefits": [
+        "It's the perfect companion for Sagittarius to explore new horizons with joy and clarity"
+      ],
+      "chakra": "Third Eye",
+      "element": "Air",
+      "zodiac": [
+        "sagittarius"
+      ],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Sagittarius-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Sagittarius-2.webp?width=1000"
+      ],
+      "published": "2025-09-16T16:50:30+05:30",
+      "order": 5
+    },
+    {
+      "shopifyId": 7940038459446,
+      "name": "Scorpio: The Passion Bracelet (Oct 23 - Nov 21)",
+      "slug": "scorpio-the-passion-bracelet-october-23-november-21",
+      "category": "zodiac-bracelets",
+      "price": 999,
+      "mrp": 1399,
+      "stone": "Tiger Eye, Red Jasper, Amethyst & Citrine",
+      "stones": [
+        "Tiger Eye",
+        "Red Jasper",
+        "Amethyst",
+        "Citrine",
+        "Malachite"
+      ],
+      "description": "Scorpio Zodiac Bracelet. Featuring Tiger Eye, Citrine, Malachite, Red Jasper, and Amethyst, this piece ignites courage and wisdom. It helps Scorpios embrace their deep intuition and navigate change with strength.",
+      "benefits": [
+        "Helps Scorpios embrace their deep intuition and navigate change with strength"
+      ],
+      "chakra": "Third Eye",
+      "element": "Air",
+      "zodiac": [
+        "scorpio"
+      ],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Scorpio-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Scorpio-2.webp?width=1000"
+      ],
+      "published": "2025-09-16T16:48:59+05:30",
+      "order": 6
+    },
+    {
+      "shopifyId": 7940037967926,
+      "name": "Libra: The Balance Bracelet (Sep 23 - Oct 22)",
+      "slug": "libra-the-balance-bracelet-september-23-october-22",
+      "category": "zodiac-bracelets",
+      "price": 999,
+      "mrp": 1399,
+      "stone": "Lapis Lazuli, Aquamarine, Moonstone & Fluorite",
+      "stones": [
+        "Lapis Lazuli",
+        "Aquamarine",
+        "Moonstone",
+        "Fluorite"
+      ],
+      "description": "Libra Zodiac Bracelet. Featuring Lapis Lazuli, Fluorite, Moonstone, and Aquamarine, this piece promotes clear communication and emotional balance. It's the ideal companion for Libras seeking fairness and serenity in all aspects of life.",
+      "benefits": [
+        "It's the ideal companion for Libras seeking fairness and serenity in all aspects of life"
+      ],
+      "chakra": "Throat",
+      "element": "Air",
+      "zodiac": [
+        "libra"
+      ],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Libra-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Libra-2.webp?width=1000"
+      ],
+      "published": "2025-09-16T16:47:41+05:30",
+      "order": 7
+    },
+    {
+      "shopifyId": 7940037115958,
+      "name": "Virgo: The Harmony Bracelet (Aug 23 - Sept 22)",
+      "slug": "virgo-the-harmony-bracelet-august-23-september-22",
+      "category": "zodiac-bracelets",
+      "price": 999,
+      "mrp": 1399,
+      "stone": "Green Aventurine, Black Onyx, Amethyst & Fluorite",
+      "stones": [
+        "Green Aventurine",
+        "Black Onyx",
+        "Amethyst",
+        "Fluorite"
+      ],
+      "description": "Virgo Zodiac Bracelet. Crafted with Fluorite, Green Aventurine, Amethyst, and Black Onyx, this piece helps you stay focused and balanced. It's the perfect accessory to help Virgos find calm and connect with their spiritual side.",
+      "benefits": [
+        "Crafted with Fluorite, Green Aventurine, Amethyst, and Black Onyx, this piece helps you stay focused and balanced",
+        "It's the perfect accessory to help Virgos find calm and connect with their spiritual side"
+      ],
+      "chakra": "Third Eye",
+      "element": "Air",
+      "zodiac": [
+        "virgo"
+      ],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Virgo-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Virgo-2.webp?width=1000"
+      ],
+      "published": "2025-09-16T16:45:30+05:30",
+      "order": 8
+    },
+    {
+      "shopifyId": 7940036395062,
+      "name": "Leo: The Confidence Bracelet (July 23 - Aug 22)",
+      "slug": "leo-the-confidence-bracelet-july-23-august-22",
+      "category": "zodiac-bracelets",
+      "price": 999,
+      "mrp": 1399,
+      "stone": "Citrine, Carnelian & Sunstone",
+      "stones": [
+        "Citrine",
+        "Carnelian",
+        "Sunstone"
+      ],
+      "description": "Crafted with the power of Sunstone, Citrine, and Carnelian, this bracelet boosts your confidence and creativity. It's the perfect piece to help Leos radiate their powerful energy and shine brightly in all they do.",
+      "benefits": [
+        "Crafted with the power of Sunstone, Citrine, and Carnelian, this bracelet boosts your confidence and creativity",
+        "It's the perfect piece to help Leos radiate their powerful energy and shine brightly in all they do"
+      ],
+      "chakra": "Solar Plexus",
+      "element": "Fire",
+      "zodiac": [
+        "leo"
+      ],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Leo-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Leo-2.webp?width=1000"
+      ],
+      "published": "2025-09-16T16:43:33+05:30",
+      "order": 9
+    },
+    {
+      "shopifyId": 7940034854966,
+      "name": "Cancer: The Intuition Bracelet (June 21 - July 22)",
+      "slug": "cancer-the-intuition-bracelet-june-21-july-22",
+      "category": "zodiac-bracelets",
+      "price": 999,
+      "mrp": 1399,
+      "stone": "Rose Quartz & Selenite",
+      "stones": [
+        "Rose Quartz",
+        "Selenite"
+      ],
+      "description": "Cancer Zodiac Bracelet. Crafted with Rhodonite, Selenite, and Rose Quartz, this bracelet offers emotional healing and inner peace. It helps Cancer signs enhance their natural empathy and feel protected while navigating life's emotional currents.",
+      "benefits": [
+        "Crafted with Rhodonite, Selenite, and Rose Quartz, this bracelet offers emotional healing and inner peace",
+        "Helps Cancer signs enhance their natural empathy and feel protected while navigating life's emotional currents"
+      ],
+      "chakra": "Heart",
+      "element": "Water",
+      "zodiac": [
+        "cancer"
+      ],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/cancer-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/cancer-2.webp?width=1000"
+      ],
+      "published": "2025-09-16T16:40:15+05:30",
+      "order": 10
+    },
+    {
+      "shopifyId": 7940034134070,
+      "name": "Gemini: The Clarity Bracelet (May 21 - June 20)",
+      "slug": "gemini-the-clarity-bracelet-may-21-june-20",
+      "category": "zodiac-bracelets",
+      "price": 999,
+      "mrp": 1399,
+      "stone": "Green Aventurine & Agate",
+      "stones": [
+        "Green Aventurine",
+        "Agate"
+      ],
+      "description": "Gemini Zodiac Bracelet. Featuring Blue Agate, Pink Quartz, Green Aventurine, and Yellow Agate, this piece promotes balance, inner peace, and good fortune. It's the perfect accessory to help Gemini's natural charm and wit shine",
+      "benefits": [
+        "It's the perfect accessory to help Gemini's natural charm and wit shine"
+      ],
+      "chakra": "Heart",
+      "element": "Earth",
+      "zodiac": [
+        "gemini"
+      ],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Gemini-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Gemini-2.webp?width=1000"
+      ],
+      "published": "2025-09-16T16:36:19+05:30",
+      "order": 11
+    },
+    {
+      "shopifyId": 7940033937462,
+      "name": "Taurus: The Strength Bracelet (April 20 - May 20)",
+      "slug": "taurus-the-strength-bracelet-april-20-may-20",
+      "category": "zodiac-bracelets",
+      "price": 999,
+      "mrp": 1399,
+      "stone": "Clear Quartz, Amethyst, Carnelian & Pyrite",
+      "stones": [
+        "Clear Quartz",
+        "Amethyst",
+        "Carnelian",
+        "Pyrite"
+      ],
+      "description": "Nurture your inner strength with our Taurus Zodiac Bracelet. This powerful piece, crafted with Unakite, Carnelian, Clear Quartz, Amethyst, and Pyrite, brings stability and personal power. It helps Taurus attract abundance and find a deeper connection to their spiritual self.",
+      "benefits": [
+        "Nurture your inner strength with our Taurus Zodiac Bracelet",
+        "This powerful piece, crafted with Unakite, Carnelian, Clear Quartz, Amethyst, and Pyrite, brings stability and personal power",
+        "Helps Taurus attract abundance and find a deeper connection to their spiritual self"
+      ],
+      "chakra": "Third Eye",
+      "element": "Air",
+      "zodiac": [
+        "taurus"
+      ],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Taurus-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Taurus-2.webp?width=1000"
+      ],
+      "published": "2025-09-16T16:34:49+05:30",
+      "order": 12
+    },
+    {
+      "shopifyId": 7940033544246,
+      "name": "Aries: The Courage Bracelet (Mar 21 - Apr 19)",
+      "slug": "aries-the-courage-bracelet-march-21-april-19",
+      "category": "zodiac-bracelets",
+      "price": 999,
+      "mrp": 1399,
+      "stone": "Green Aventurine, Agate & Opal",
+      "stones": [
+        "Green Aventurine",
+        "Agate",
+        "Opal"
+      ],
+      "description": "Aries Zodiac Bracelet. Crafted with Opal, Blue Agate, Green Aventurine, and Pink Quartz, it brings luck, courage, and balance. This powerful piece helps Aries find emotional harmony and express their creativity while staying grounded.",
+      "benefits": [
+        "Crafted with Opal, Blue Agate, Green Aventurine, and Pink Quartz, it brings luck, courage, and balance",
+        "This powerful piece helps Aries find emotional harmony and express their creativity while staying grounded"
+      ],
+      "chakra": "Heart",
+      "element": "Earth",
+      "zodiac": [
+        "aries"
+      ],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Aries-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Aries-2.webp?width=1000"
+      ],
+      "published": "2025-09-16T16:32:42+05:30",
+      "order": 13
+    },
+    {
+      "shopifyId": 7938422276150,
+      "name": "Selenite Crystal Charging Plate (Circle Plain)",
+      "slug": "circle-selenite-crystal-charging-platecircle-plain",
+      "category": "sukoon-special",
+      "price": 299,
+      "mrp": 599,
+      "stone": "Selenite",
+      "stones": [
+        "Selenite"
+      ],
+      "description": "Protect your crystals with our beautiful Selenite Crystal Charging Plate. This plate is a powerful tool for cleansing and energizing your stones. Its natural properties keep your crystals charged and your space full of positive energy.",
+      "benefits": [
+        "Protect your crystals with our beautiful Selenite Crystal Charging Plate",
+        "This plate is a powerful tool for cleansing and energizing your stones",
+        "Its natural properties keep your crystals charged and your space full of positive energy"
+      ],
+      "chakra": "Crown",
+      "element": "Aether",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Circle-Selenite-Crystal-Charging-Plate-P-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Circle-Selenite-Crystal-Charging-Plate-P-2.webp?width=1000"
+      ],
+      "published": "2025-09-13T20:53:39+05:30",
+      "order": 14
+    },
+    {
+      "shopifyId": 7938421751862,
+      "name": "Selenite Crystal Charging Plate (Charkha Symbol)",
+      "slug": "selenite-crystal-charging-plate-circle-charkha-symbol",
+      "category": "sukoon-special",
+      "price": 349,
+      "mrp": 649,
+      "stone": "Selenite",
+      "stones": [
+        "Selenite"
+      ],
+      "description": "Power up your crystals with our Selenite Crystal Charging Plate. This beautiful plate has colorful chakra symbols, making it a powerful tool for cleansing and energizing your stones. Its natural properties keep your crystals charged and your space full of positive energy.",
+      "benefits": [
+        "Power up your crystals with our Selenite Crystal Charging Plate",
+        "This beautiful plate has colorful chakra symbols, making it a powerful tool for cleansing and energizing your stones",
+        "Its natural properties keep your crystals charged and your space full of positive energy"
+      ],
+      "chakra": "Crown",
+      "element": "Aether",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Selenite-Crystal-Charging-Plate-CIRCLE-CHARKHA-SYMBOL-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Selenite-Crystal-Charging-Plate-CIRCLE-CHARKHA-SYMBOL-2.webp?width=1000"
+      ],
+      "published": "2025-09-13T20:50:39+05:30",
+      "order": 15
+    },
+    {
+      "shopifyId": 7938421260342,
+      "name": "Selenite Crystal Charging Plate (Plain)",
+      "slug": "selenite-crystal-charging-plate-plain",
+      "category": "sukoon-special",
+      "price": 299,
+      "mrp": 599,
+      "stone": "Selenite",
+      "stones": [
+        "Selenite"
+      ],
+      "description": "Protect your crystals with our beautiful Selenite Crystal Charging Plate. This plate is a powerful tool for cleansing and energizing your stones. Its natural properties keep your crystals charged and your space full of positive energy",
+      "benefits": [
+        "Protect your crystals with our beautiful Selenite Crystal Charging Plate",
+        "This plate is a powerful tool for cleansing and energizing your stones",
+        "Its natural properties keep your crystals charged and your space full of positive energy"
+      ],
+      "chakra": "Crown",
+      "element": "Aether",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Selenite-Crystal-Charging-Plate-Plain-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Selenite-Crystal-Charging-Plate-Plain-2.webp?width=1000"
+      ],
+      "published": "2025-09-13T20:49:01+05:30",
+      "order": 16
+    },
+    {
+      "shopifyId": 7938420768822,
+      "name": "Selenite Crystal Charging Plate (Charkha Symbol)",
+      "slug": "selenite-crystal-charging-plate-charkha-symbols",
+      "category": "sukoon-special",
+      "price": 349,
+      "mrp": 549,
+      "stone": "Selenite",
+      "stones": [
+        "Selenite"
+      ],
+      "description": "Power up your crystals with our Selenite Crystal Charging Plate. This beautiful plate has colorful chakra symbols, making it a powerful tool for cleansing and energizing your stones. Its natural properties keep your crystals charged and your space full of positive energy.",
+      "benefits": [
+        "Power up your crystals with our Selenite Crystal Charging Plate",
+        "This beautiful plate has colorful chakra symbols, making it a powerful tool for cleansing and energizing your stones",
+        "Its natural properties keep your crystals charged and your space full of positive energy"
+      ],
+      "chakra": "Crown",
+      "element": "Aether",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Selenite-Crystal-Charging-Plate-CHARKHA-SYMBOLS-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Selenite-Crystal-Charging-Plate-CHARKHA-SYMBOLS-2.webp?width=1000"
+      ],
+      "published": "2025-09-13T20:45:39+05:30",
+      "order": 17
+    },
+    {
+      "shopifyId": 7938420244534,
+      "name": "Mini Crystal Tree Set Of 12 for Good Luck",
+      "slug": "mini-crystal-tree-set-of-12",
+      "category": "sukoon-special",
+      "price": 699,
+      "mrp": 999,
+      "stone": "Lapis Lazuli, Rose Quartz, Clear Quartz & Red Jasper",
+      "stones": [
+        "Lapis Lazuli",
+        "Rose Quartz",
+        "Clear Quartz",
+        "Red Jasper",
+        "Green Aventurine",
+        "Amethyst"
+      ],
+      "description": "This beautiful 12 mini trees handmade in India with original crystal stones. Each tree size is 7-8 Cm when open up the leaves. This trees has crystals Amethyst, Lapis Lazuli, Yellow Aventurine, Carnelian, Green Aventurine, Red Jasper,Clear Quartz, Rose Quartz & Yellow Aventure. All Stones of sustainable abundance respect, love, courage, truth, opportunity, wisdom and clarity. Disclaimer- This is an AI-enhanced image; the actual product may vary slightly in appearance.",
+      "benefits": [
+        "This beautiful 12 mini trees handmade in India with original crystal stones",
+        "Each tree size is 7-8 Cm when open up the leaves",
+        "This trees has crystals Amethyst, Lapis Lazuli, Yellow Aventurine, Carnelian, Green Aventurine, Red Jasper,Clear Quartz, Rose Quartz & Yellow Aventure"
+      ],
+      "chakra": "Heart",
+      "element": "Water",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/12-Tree-Set-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/12-Tree-Set-2.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/12-Tree-Set-3.webp?width=1000"
+      ],
+      "published": "2025-09-13T20:43:32+05:30",
+      "order": 18
+    },
+    {
+      "shopifyId": 7938419130422,
+      "name": "7 Charkha Crystal Tree for Good Luck & Prosperity",
+      "slug": "7-charkha-crystal-tree",
+      "category": "sukoon-special",
+      "price": 799,
+      "mrp": 1099,
+      "stone": "Mixed crystal chips",
+      "stones": [],
+      "description": "Elevate your space with our 7 Chakra Crystal Tree. This beautiful decor piece combines the powerful energy of seven different crystals to bring balance, harmony, and positive vibes into your home or office. It's the perfect way to add a touch of nature and spiritual wellness to any room. Disclaimer- This is an AI-enhanced image; the actual product may vary slightly in appearance.",
+      "benefits": [
+        "Elevate your space with our 7 Chakra Crystal Tree",
+        "This beautiful decor piece combines the powerful energy of seven different crystals to bring balance, harmony, and positive vibes into your home or office",
+        "It's the perfect way to add a touch of nature and spiritual wellness to any room"
+      ],
+      "chakra": "Earth",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/7-Charkha-Stones-Tree-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/7-Charkha-Stones-Tree-2.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/7-Charkha-Stones-Tree-3.webp?width=1000"
+      ],
+      "published": "2025-09-13T20:33:23+05:30",
+      "order": 19
+    },
+    {
+      "shopifyId": 7938418933814,
+      "name": "Pyrite Mala for Wealth & Success",
+      "slug": "pyritr-mala",
+      "category": "sukoon-special",
+      "price": 2199,
+      "mrp": 2499,
+      "stone": "Pyrite",
+      "stones": [
+        "Pyrite"
+      ],
+      "description": "Protect yourself from negative energy with our beautiful Pyrite mala. This handcrafted bracelet and necklace combo features natural Pyrite stones, known to attract wealth and good luck. Its powerful energy helps you stay grounded and focused Disclaimer- This is an AI-enhanced image; the actual product may vary slightly in appearance.",
+      "benefits": [
+        "Protect yourself from negative energy with our beautiful Pyrite mala",
+        "This handcrafted bracelet and necklace combo features natural Pyrite stones, known to attract wealth and good luck",
+        "Its powerful energy helps you stay grounded and focused Disclaimer- This is an AI-enhanced image; the actual product may vary slightly in appearance"
+      ],
+      "chakra": "Solar Plexus",
+      "element": "Fire",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Pyrite-Mala-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Pyrite-Mala-2.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Pyrite-Mala-3.webp?width=1000"
+      ],
+      "published": "2025-09-13T20:30:55+05:30",
+      "order": 20
+    },
+    {
+      "shopifyId": 7938418212918,
+      "name": "Nazar Suraksha Resin Wall Decor",
+      "slug": "nazar-suraksha-resin-wall-decor",
+      "category": "sukoon-special",
+      "price": 1599,
+      "mrp": 1999,
+      "stone": "Resin & evil-eye bead",
+      "stones": [],
+      "description": "Nazar Suraksha wall decor is a powerful shield against negativity. Its vibrant blue eye design is a stylish statement piece that radiates positivity, making it a perfect addition to any home. Protect your space and invite good energy with this beautiful, handcrafted decor item. Disclaimer- This is an AI-enhanced image; the actual product may vary slightly in appearance",
+      "benefits": [
+        "Nazar Suraksha wall decor is a powerful shield against negativity",
+        "Its vibrant blue eye design is a stylish statement piece that radiates positivity, making it a perfect addition to any home",
+        "Protect your space and invite good energy with this beautiful, handcrafted decor item"
+      ],
+      "chakra": "Earth",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Nazar-Suraksha-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Nazar-Suraksha-2.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Nazar-Suraksha-3.webp?width=1000"
+      ],
+      "published": "2025-09-13T20:18:09+05:30",
+      "order": 21
+    },
+    {
+      "shopifyId": 7938203942966,
+      "name": "Sphtik Bracelet",
+      "slug": "sphtik-bracelet",
+      "category": "wellness-bracelets",
+      "price": 1199,
+      "mrp": 1999,
+      "stone": "Sphtik",
+      "stones": [
+        "Sphtik"
+      ],
+      "description": "Sphatik Bracelet, made with 100% real crystal beads and personally energised by our founder. Known for peace, positivity, and healing, this natural crystal bracelet helps calm the mind, reduce stress, and attract good energy. Disclaimer- The image has been AI-enhanced and may display slight color variations in the real product",
+      "benefits": [
+        "Sphatik Bracelet, made with 100% real crystal beads and personally energised by our founder",
+        "Known for peace, positivity, and healing, this natural crystal bracelet helps calm the mind, reduce stress, and attract good energy",
+        "Disclaimer- The image has been AI-enhanced and may display slight color variations in the real product"
+      ],
+      "chakra": "Crown",
+      "element": "Aether",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Sphtik-Bracelet-1_236ac446-9176-491f-8356-757634a5459d.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Sphtik-Bracelet-2_7d7fe80c-dede-4270-abd5-802dfbc977ff.webp?width=1000"
+      ],
+      "published": "2025-09-13T14:43:37+05:30",
+      "order": 22
+    },
+    {
+      "shopifyId": 7938136342582,
+      "name": "Authentic Rudraksha Mala",
+      "slug": "black-rudraksha-mala",
+      "category": "rudraksha",
+      "price": 501,
+      "mrp": 701,
+      "stone": "Rudraksha",
+      "stones": [
+        "Rudraksha"
+      ],
+      "description": "Discover spiritual tranquility with Sukoon's authentic Rudraksha mala. Traditionally used for Japa and meditation, these sacred beads are known to calm the mind, enhance focus, and create a shield of positive energy. Deepen your spiritual practice and find inner peace with our ethically sourced, genuine Rudraksha mala",
+      "benefits": [
+        "Discover spiritual tranquility with Sukoon's authentic Rudraksha mala",
+        "Traditionally used for Japa and meditation, these sacred beads are known to calm the mind, enhance focus, and create a shield of positive energy",
+        "Deepen your spiritual practice and find inner peace with our ethically sourced, genuine Rudraksha mala"
+      ],
+      "chakra": "Crown",
+      "element": "Aether",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Rudraksha-Mala-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Rudraksha-Mala-2.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Rudraksha-Mala-3.webp?width=1000"
+      ],
+      "published": "2025-09-13T10:19:59+05:30",
+      "order": 23
+    },
+    {
+      "shopifyId": 7938136211510,
+      "name": "Authentic Black Rudraksha Mala",
+      "slug": "rudraksha-mala",
+      "category": "rudraksha",
+      "price": 501,
+      "mrp": 701,
+      "stone": "Rudraksha",
+      "stones": [
+        "Rudraksha"
+      ],
+      "description": "Sukoon's authentic Black Rudraksha Mala. Known to absorb negativity, this mala acts as a powerful spiritual shield, offering protection from unwanted energies. It enhances mental clarity, reduces anxiety, and brings a sense of calm and stability.",
+      "benefits": [
+        "Sukoon's authentic Black Rudraksha Mala",
+        "Known to absorb negativity, this mala acts as a powerful spiritual shield, offering protection from unwanted energies",
+        "Enhances mental clarity, reduces anxiety, and brings a sense of calm and stability"
+      ],
+      "chakra": "Crown",
+      "element": "Aether",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Black-Rudraksha-Mala-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Black-Rudraksha-Mala-2.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Black-Rudraksha-Mala-3.webp?width=1000"
+      ],
+      "published": "2025-09-13T10:18:48+05:30",
+      "order": 24
+    },
+    {
+      "shopifyId": 7938136080438,
+      "name": "Authentic 8 Mukhi Rudraksha Bracelet",
+      "slug": "8-mukhi-bracelet",
+      "category": "rudraksha",
+      "price": 1299,
+      "mrp": 1499,
+      "stone": "Rudraksha",
+      "stones": [
+        "Rudraksha"
+      ],
+      "description": "Sukoon's authentic 8 Mukhi Rudraksha bracelet. Blessed by Lord Ganesha, this powerful bead is known to remove obstacles and enhance wisdom. Find clarity, overcome challenges, and achieve your goals with our ethically sourced, genuine Rudraksha jewellery. Trust Sukoon for authentic spiritual tools that empower your journey. Disclaimer- The image has been AI-enhanced and may display slight color variations in the real product",
+      "benefits": [
+        "Sukoon's authentic 8 Mukhi Rudraksha bracelet",
+        "Blessed by Lord Ganesha, this powerful bead is known to remove obstacles and enhance wisdom",
+        "Find clarity, overcome challenges, and achieve your goals with our ethically sourced, genuine Rudraksha jewellery"
+      ],
+      "chakra": "Crown",
+      "element": "Aether",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/8-Mukhi-Bracelet-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/8-Mukhi-Bracelet-2.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/8-Mukhi-Bracelet-3.webp?width=1000"
+      ],
+      "published": "2025-09-13T10:17:16+05:30",
+      "order": 25
+    },
+    {
+      "shopifyId": 7938135883830,
+      "name": "Authentic 5 Mukhi Rudraksha Bracelet",
+      "slug": "mukhi-rudraksha-bracelet",
+      "category": "rudraksha",
+      "price": 501,
+      "mrp": 701,
+      "stone": "Rudraksha",
+      "stones": [
+        "Rudraksha"
+      ],
+      "description": "Sukoon offers 100% authentic 5 Mukhi Rudraksha bracelets, sourced ethically for purity and spiritual benefits. Experience peace with genuine Rudraksha, no side effects, safe for daily wear. Trust Sukoon for authentic Rudraksha jewellery and enhance your well-being naturally. Disclaimer- The image has been AI-enhanced and may display slight color variations in the real product.",
+      "benefits": [
+        "Sukoon offers 100% authentic 5 Mukhi Rudraksha bracelets, sourced ethically for purity and spiritual benefits",
+        "Experience peace with genuine Rudraksha, no side effects, safe for daily wear",
+        "Trust Sukoon for authentic Rudraksha jewellery and enhance your well-being naturally"
+      ],
+      "chakra": "Crown",
+      "element": "Aether",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/5-Mukhi-Bracelet-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/5-Mukhi-Bracelet-2.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/5-Mukhi-Bracelet-3.webp?width=1000"
+      ],
+      "published": "2025-09-13T10:15:20+05:30",
+      "order": 26
+    },
+    {
+      "shopifyId": 7935809159222,
+      "name": "Sukoon's Triple Protection Bracelet (Tiger Eye)",
+      "slug": "triple-protection",
+      "category": "wellness-bracelets",
+      "price": 999,
+      "mrp": 1399,
+      "stone": "Tiger Eye, Black Obsidian & Hematite",
+      "stones": [
+        "Tiger Eye",
+        "Black Obsidian",
+        "Hematite"
+      ],
+      "description": "Shield yourself with our Triple Protection Bracelet, a powerful mix of Tiger Eye, Black Obsidian, and Hematite. This ultimate defender blocks negativity, boosts courage, and keeps you grounded. Charged by a certified astrologer, it’s your essential armor for daily confidence and security.",
+      "benefits": [
+        "Shield yourself with our Triple Protection Bracelet, a powerful mix of Tiger Eye, Black Obsidian, and Hematite",
+        "This ultimate defender blocks negativity, boosts courage, and keeps you grounded",
+        "Charged by a certified astrologer, it’s your essential armor for daily confidence and security"
+      ],
+      "chakra": "Solar Plexus",
+      "element": "Fire",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Triple-Protection-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Triple-Protection-2.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Triple-Protection-3.webp?width=1000"
+      ],
+      "published": "2025-09-11T13:24:50+05:30",
+      "order": 27
+    },
+    {
+      "shopifyId": 7935808864310,
+      "name": "Corporate Majdoor Stress Relief Bracelet (Amethyst bracelet)",
+      "slug": "stress-anxiety-relief-bracelet-corporate-majdoor-bracelet",
+      "category": "wellness-bracelets",
+      "price": 999,
+      "mrp": 1500,
+      "stone": "Amethyst & Moonstone",
+      "stones": [
+        "Amethyst",
+        "Moonstone"
+      ],
+      "description": "Stress & Anxiety Relief bracelet, a bestseller known as the \"Corporate Majdoor\" bracelet. Perfect for students and professionals, it blends calming Amethyst and soothing Moonstone to ease depression, stress, and anxiety. Personally energized by our astrologer, it's your go-to for peace of mind in busy times.",
+      "benefits": [
+        "Stress & Anxiety Relief bracelet, a bestseller known as the \"Corporate Majdoor\" bracelet",
+        "Perfect for students and professionals, it blends calming Amethyst and soothing Moonstone to ease depression, stress, and anxiety",
+        "Personally energized by our astrologer, it's your go-to for peace of mind in busy times"
+      ],
+      "chakra": "Third Eye",
+      "element": "Air",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Stress-and-Anxiety-Rel-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Stress-and-Anxiety-Rel-2.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Stress-and-Anxiety-Rel-3.webp?width=1000"
+      ],
+      "published": "2025-09-11T13:22:50+05:30",
+      "order": 28
+    },
+    {
+      "shopifyId": 7935808634934,
+      "name": "Sukoon's Red Jesper Bracelet",
+      "slug": "red-jesper",
+      "category": "wellness-bracelets",
+      "price": 999,
+      "mrp": 1399,
+      "stone": "Red Jasper",
+      "stones": [
+        "Red Jasper"
+      ],
+      "description": "F eel strong and stable with our Red Jasper bracelet. Known as the \"Stone of Endurance,\" it gives you a boost of energy and courage when you need it most. Personally charged by our founder, an astrologer, wear this vibrant stone to stay grounded and tackle your day with confidence.",
+      "benefits": [
+        "F eel strong and stable with our Red Jasper bracelet",
+        "Known as the \"Stone of Endurance,\" it gives you a boost of energy and courage when you need it most",
+        "Personally charged by our founder, an astrologer, wear this vibrant stone to stay grounded and tackle your day with confidence"
+      ],
+      "chakra": "Sacral",
+      "element": "Fire",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Red-Jesper-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Red-Jesper-2.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Red-Jesper-3.webp?width=1000"
+      ],
+      "published": "2025-09-11T13:21:18+05:30",
+      "order": 29
+    },
+    {
+      "shopifyId": 7935808241718,
+      "name": "Sukoon's Pyrite & Black Tourmaline (Richie Rich Combo)",
+      "slug": "pyrite-black-tourmaline",
+      "category": "wellness-bracelets",
+      "price": 1199,
+      "mrp": 1600,
+      "stone": "Black Tourmaline & Pyrite",
+      "stones": [
+        "Black Tourmaline",
+        "Pyrite"
+      ],
+      "description": "Protect your wealth with our Pyrite & Black Tourmaline bracelet. This power duo shields you from negative energy with Black Tourmaline while attracting success and abundance with money-magnet Pyrite. Energized by our certified astrologer, it’s your ultimate tool for financial security and confidence.",
+      "benefits": [
+        "Protect your wealth with our Pyrite & Black Tourmaline bracelet",
+        "This power duo shields you from negative energy with Black Tourmaline while attracting success and abundance with money-magnet Pyrite",
+        "Energized by our certified astrologer, it’s your ultimate tool for financial security and confidence"
+      ],
+      "chakra": "Solar Plexus",
+      "element": "Fire",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Pyrite-and-Black-Tournamilne-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Pyrite-and-Black-Tournamilne-2.webp?width=1000"
+      ],
+      "published": "2025-09-11T13:19:05+05:30",
+      "order": 30
+    },
+    {
+      "shopifyId": 7935807651894,
+      "name": "Sukoon's Name & Fame Bracelet (Salman Khan Bracelet)",
+      "slug": "name-fame-bracelet-salman-khan-bracelet",
+      "category": "wellness-bracelets",
+      "price": 999,
+      "mrp": 1500,
+      "stone": "Citrine",
+      "stones": [
+        "Citrine"
+      ],
+      "description": "Name & Fame Bracelet, popularly known as the 'Salman Khan bracelet'. It combines protective Firoza for recognition and success-magnet Citrine to enhance your public standing. Personally energized by our certified astrologer, this bracelet is designed to elevate your status and attract good fortune",
+      "benefits": [
+        "Name & Fame Bracelet, popularly known as the 'Salman Khan bracelet'",
+        "Combines protective Firoza for recognition and success-magnet Citrine to enhance your public standing",
+        "Personally energized by our certified astrologer, this bracelet is designed to elevate your status and attract good fortune"
+      ],
+      "chakra": "Solar Plexus",
+      "element": "Fire",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Name-and-Fame-Bracelet-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Name-and-Fame-Bracelet-2.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Name-and-Fame-Bracelet-3.webp?width=1000"
+      ],
+      "published": "2025-09-11T13:16:35+05:30",
+      "order": 31
+    },
+    {
+      "shopifyId": 7935807160374,
+      "name": "Sukoon's Money Magnet Bracelet (Ambani Bracelet)",
+      "slug": "money-magnet-ambani-bracelet",
+      "category": "wellness-bracelets",
+      "price": 999,
+      "mrp": 1500,
+      "stone": "Tiger Eye, Green Aventurine, Citrine & Hematite",
+      "stones": [
+        "Tiger Eye",
+        "Green Aventurine",
+        "Citrine",
+        "Hematite",
+        "Pyrite"
+      ],
+      "description": "Money Magnet Bracelet, the famous 'Ambani Bracelet' for attracting wealth. This bestseller blends 5 powerful stones— Pyrite, Citrine, Green Aventurine, Tiger Eye, and Hematite —to draw success and opportunity. Energized by a certified astrologer, it's your ultimate tool for money",
+      "benefits": [
+        "Money Magnet Bracelet, the famous 'Ambani Bracelet' for attracting wealth",
+        "This bestseller blends 5 powerful stones— Pyrite, Citrine, Green Aventurine, Tiger Eye, and Hematite —to draw success and opportunity",
+        "Energized by a certified astrologer, it's your ultimate tool for money"
+      ],
+      "chakra": "Solar Plexus",
+      "element": "Fire",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Money-Magnet-Bracelet-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Money-Magnet-Bracelet-2.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Money-Magnet-Bracelet-3.webp?width=1000"
+      ],
+      "published": "2025-09-11T13:15:11+05:30",
+      "order": 32
+    },
+    {
+      "shopifyId": 7935806799926,
+      "name": "Sukoon's Love Bond Bracelet (Rose Quartz)",
+      "slug": "love-bond-bracelet",
+      "category": "wellness-bracelets",
+      "price": 999,
+      "mrp": 1399,
+      "stone": "Rose Quartz",
+      "stones": [
+        "Rose Quartz"
+      ],
+      "description": "Love Bond Bracelet, made from pure Rose Quartz, the stone of unconditional love. It attracts romance, deepens relationships, and fosters self-love and emotional healing. Personally energized by our certified astrologer, this bracelet is your daily reminder to give and receive love freely",
+      "benefits": [
+        "Love Bond Bracelet, made from pure Rose Quartz, the stone of unconditional love",
+        "Attracts romance, deepens relationships, and fosters self-love and emotional healing",
+        "Personally energized by our certified astrologer, this bracelet is your daily reminder to give and receive love freely"
+      ],
+      "chakra": "Heart",
+      "element": "Water",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Love-Bond-Bracelet-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Love-Bond-Bracelet-2.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Love-Bond-Bracelet-3.webp?width=1000"
+      ],
+      "published": "2025-09-11T13:12:51+05:30",
+      "order": 33
+    },
+    {
+      "shopifyId": 7935806570550,
+      "name": "Sukoon's Golden Luck Bracelet",
+      "slug": "golden-luck-bracelet",
+      "category": "wellness-bracelets",
+      "price": 999,
+      "mrp": 1399,
+      "stone": "Pyrite",
+      "stones": [
+        "Pyrite"
+      ],
+      "description": "Unlock your potential with our Golden Luck Bracelet, a powerful combination of Golden and Natural Pyrite. This bracelet attracts wealth and success while boosting confidence. Each piece is personally energized by our certified astrologer to amplify its power.",
+      "benefits": [
+        "Unlock your potential with our Golden Luck Bracelet, a powerful combination of Golden and Natural Pyrite",
+        "Attracts wealth and success while boosting confidence",
+        "Each piece is personally energized by our certified astrologer to amplify its power"
+      ],
+      "chakra": "Solar Plexus",
+      "element": "Fire",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Golden-Luck-Bracelet-1.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Golden-Luck-Bracelet-2.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Golden-Luck-Bracelet-3.webp?width=1000"
+      ],
+      "published": "2025-09-11T13:11:08+05:30",
+      "order": 34
+    },
+    {
+      "shopifyId": 7935806308406,
+      "name": "Sukoon's Anger Reliever Bracelet (Howlite Stone)",
+      "slug": "anger-reliever-bracelet",
+      "category": "wellness-bracelets",
+      "price": 999,
+      "mrp": 1500,
+      "stone": "Rose Quartz & Howlite",
+      "stones": [
+        "Rose Quartz",
+        "Howlite"
+      ],
+      "description": "Find instant calm with our Anger Relief Bracelet, crafted with soothing Howlite and loving Rose Quartz. To amplify its healing energy, each bracelet is personally charged by our founder, a certified astrologer. Wear it to dissolve tension and restore your peace of mind.",
+      "benefits": [
+        "Find instant calm with our Anger Relief Bracelet, crafted with soothing Howlite and loving Rose Quartz",
+        "To amplify its healing energy, each bracelet is personally charged by our founder, a certified astrologer",
+        "Wear it to dissolve tension and restore your peace of mind"
+      ],
+      "chakra": "Heart",
+      "element": "Water",
+      "zodiac": [],
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Anger-RelieverBracelet-1_539b6af7-529f-40a5-a8e1-34e77b3807c2.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Anger-RelieverBracelet-2_d2f99fea-a03d-4e3f-b78c-ec801e08b162.webp?width=1000",
+        "https://cdn.shopify.com/s/files/1/0695/0679/3526/files/Anger-RelieverBracelet-3_b05f4eb6-6f73-4b68-b5cf-425be725af1b.webp?width=1000"
+      ],
+      "published": "2025-09-11T13:09:01+05:30",
+      "order": 35
+    }
+  ]
+}

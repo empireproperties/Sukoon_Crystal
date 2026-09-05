@@ -1,0 +1,22 @@
+{
+  "name": "sukoon-crystal-solutions",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sukoon Crystal Solutions - premium astrology & crystal healing e-commerce",
+  "scripts": {
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "dev": "concurrently -n API,WEB -c magenta,cyan \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "seed": "npm run seed --prefix server",
+    "build": "npm run build --prefix client",
+    "start": "npm run start --prefix server",
+    "import:shopify": "node server/import-shopify.js",
+    "sync": "node server/import-shopify.js --all",
+    "images:local": "node server/download-images.js",
+    "migrate": "node server/migrate-to-mongo.js --clean-demo --cloudinary",
+    "migrate:dry": "node server/migrate-to-mongo.js --clean-demo --cloudinary --dry-run"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "playwright": "^1.62.1"
+  }
+}

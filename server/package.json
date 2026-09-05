@@ -1,0 +1,31 @@
+{
+  "name": "sukoon-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch index.js",
+    "start": "node index.js",
+    "seed": "node seed.js",
+    "import": "node import-shopify.js",
+    "images": "node download-images.js",
+    "migrate": "node migrate-to-mongo.js",
+    "migrate:cockroach": "node migrate-to-cockroach.js",
+    "migrate:cockroach:dry": "node migrate-to-cockroach.js --dry-run",
+    "admin:reset": "node reset-admin.js",
+    "admin:list": "node reset-admin.js --list",
+    "clean:demo": "node clean-demo-data.js",
+    "clean:demo:dry": "node clean-demo-data.js --dry-run",
+    "seed:storefront": "node seed-storefront.js",
+    "import:csv": "node import-csv.js"
+  },
+  "dependencies": {
+    "cloudinary": "^2.11.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "mongodb": "^7.6.0",
+    "multer": "^2.2.0",
+    "pg": "^8.23.0",
+    "razorpay": "^2.9.8"
+  }
+}

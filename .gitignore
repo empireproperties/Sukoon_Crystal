@@ -1,0 +1,25 @@
+node_modules/
+dist/
+.dist/
+shots/
+*.log
+
+# Local secrets: Shopify Admin API token lives here. Never commit.
+server/shopify.config.json
+.env
+.env.*
+!.env.example
+
+# Uploaded product images are runtime data, not source.
+server/uploads/
+
+# The live file DB: 393 real orders with customer names, emails, phone numbers
+# and home addresses, plus bookings with birth details. Production serves from
+# CockroachDB and `npm run seed` rebuilds a local copy, so nothing here needs
+# to be in the repo.
+server/data/db.json
+
+# Data snapshots (keep these off the repo, back them up somewhere else).
+server/data/db.pre-migration.*.json
+server/data/db.pre-clean.*.json
+server/data/db.before-import.*.json

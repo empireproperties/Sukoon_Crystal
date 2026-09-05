@@ -1,0 +1,397 @@
+@import 'tailwindcss';
+
+/* ============================================================================
+   SUKOON — two independent axes.
+
+   [data-design]   structure: type, corners, spacing rhythm, sidebar, weight
+   [data-palette]  colour only — five per design, three light and two dark
+
+   Every component reads tokens, never raw hex, so all twenty combinations
+   render correctly without touching a component.
+   ========================================================================== */
+
+@theme inline {
+  --color-bg: var(--c-bg);
+  --color-bg2: var(--c-bg2);
+  --color-surface: var(--c-surface);
+  --color-line: var(--c-line);
+  --color-ink: var(--c-ink);
+  --color-muted: var(--c-muted);
+  --color-brand: var(--c-brand);
+  --color-brand-soft: var(--c-brand-soft);
+  --color-onbrand: var(--c-onbrand);
+  --color-accent: var(--c-accent);
+  --color-sale: var(--c-sale);
+  --color-ok: var(--c-ok);
+  --font-display: var(--f-display);
+  --font-body: var(--f-body);
+}
+
+/* ═══════════════════════════════ THE TEMPLATE ═══════════════════════════ */
+/* One skeleton. `:root` carries it so the page is styled even before the
+   store stamps data-design, and the attribute selector is kept so existing
+   markup and any stale settings row still match. */
+:root,
+[data-design='gallery'],
+[data-design] {
+  --sidebar: 0px;
+  --f-display: 'Marcellus', Georgia, serif;
+  --f-body: 'Inter', system-ui, sans-serif;
+  --r-card: 2px;
+  --r-btn: 0px;
+  --h-weight: 400;
+  --h-tracking: 0.005em;
+  --h-scale: 1.04;
+  --eyebrow-tracking: 0.3em;
+  --eyebrow-size: 0.64rem;
+  --btn-pad: 1rem 2rem;
+  --btn-size: 0.72rem;
+  --btn-tracking: 0.16em;
+  --btn-transform: uppercase;
+  --sec-py: 5rem;
+  --wrap: 1320px;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 18px 40px -30px rgb(0 0 0 / 0.30);
+  --shadow-pop: 0 30px 70px -40px rgb(0 0 0 / 0.55);
+  --card-border: 1px;
+  --body-size: 15px;
+}
+
+/* ══════════════════════════════════ COLOURWAYS ══════════════════════════ */
+/* Five light, three dark. Tokens only — no component reads a raw hex, so every
+   one of these works everywhere without a code change.
+     --c-bg     page ground        --c-brand      buttons, header chrome
+     --c-bg2    recessed panels    --c-brand-soft tinted fills
+     --c-surface cards             --c-onbrand    text on --c-brand
+     --c-line   hairlines          --c-accent     eyebrows, prices, highlights
+     --c-ink    body text          --c-sale/--c-ok status colours            */
+
+/* ---------------------------------------------------------------- light -- */
+
+/* Warm ivory and antique gold. The quietest — photography carries the colour. */
+[data-palette='alabaster-gold'] {
+  --c-bg:#f7f5f0; --c-bg2:#efece4; --c-surface:#ffffff; --c-line:#e4dfd4;
+  --c-ink:#1c1b18; --c-muted:#726c62;
+  --c-brand:#1c1b18; --c-brand-soft:#f1ede3; --c-onbrand:#f7f5f0;
+  --c-accent:#9c7c3c; --c-sale:#9b3a2b; --c-ok:#3f6b4a;
+}
+
+/* The logo's own disc green and gold foil. Closest match to the brand mark. */
+[data-palette='ivory-emerald'] {
+  --c-bg:#fbfaf6; --c-bg2:#f0f2ed; --c-surface:#ffffff; --c-line:#e0e4dc;
+  --c-ink:#14211b; --c-muted:#63706a;
+  --c-brand:#0f3126; --c-brand-soft:#e9efe9; --c-onbrand:#f7f2e6;
+  --c-accent:#a8842c; --c-sale:#9b3327; --c-ok:#2f6b4f;
+}
+
+/* Soft blush with a deep ruby. Festive without shouting. */
+[data-palette='blush-ruby'] {
+  --c-bg:#fdf9f7; --c-bg2:#f8ecec; --c-surface:#ffffff; --c-line:#efdcdd;
+  --c-ink:#2a1418; --c-muted:#7d616a;
+  --c-brand:#9e1f34; --c-brand-soft:#fbeef0; --c-onbrand:#fff5f4;
+  --c-accent:#a8763f; --c-sale:#b02132; --c-ok:#3f6b4a;
+}
+
+/* Sand and burnt earth. Flatters the rudraksha and jasper photography. */
+[data-palette='linen-terracotta'] {
+  --c-bg:#fbf6f0; --c-bg2:#f4e9dd; --c-surface:#ffffff; --c-line:#ebddcc;
+  --c-ink:#2c1a12; --c-muted:#7d6857;
+  --c-brand:#b1552c; --c-brand-soft:#fbeee3; --c-onbrand:#fff6ee;
+  --c-accent:#a07434; --c-sale:#a5391f; --c-ok:#4a6b48;
+}
+
+/* Cool pearl with a deep plum. The most modern of the light set. */
+[data-palette='pearl-plum'] {
+  --c-bg:#faf8fb; --c-bg2:#f1edf3; --c-surface:#ffffff; --c-line:#e5dfe9;
+  --c-ink:#221726; --c-muted:#6e6474;
+  --c-brand:#6b2f5e; --c-brand-soft:#f5eef4; --c-onbrand:#fdf9fc;
+  --c-accent:#9a7440; --c-sale:#a02f45; --c-ok:#3f6b57;
+}
+
+/* ----------------------------------------------------------------- dark -- */
+
+/* Near-black and gold. The strongest frame for bright stones. */
+[data-palette='obsidian-gold'] {
+  --c-bg:#0e0e10; --c-bg2:#17171a; --c-surface:#17171a; --c-line:#2a2a30;
+  --c-ink:#f0ede6; --c-muted:#9a968d;
+  --c-brand:#c9a961; --c-brand-soft:#1e1e22; --c-onbrand:#0e0e10;
+  --c-accent:#c9a961; --c-sale:#d98a70; --c-ok:#7fbf95;
+  color-scheme: dark;
+}
+
+/* The logo green as the whole page, lit by its own gold. */
+[data-palette='forest-gold'] {
+  --c-bg:#0c1f18; --c-bg2:#123027; --c-surface:#123027; --c-line:#1e4437;
+  --c-ink:#eaf1ec; --c-muted:#92a89c;
+  --c-brand:#d9ae59; --c-brand-soft:#16382d; --c-onbrand:#0c1f18;
+  --c-accent:#d9ae59; --c-sale:#e09a7d; --c-ok:#7fbf95;
+  color-scheme: dark;
+}
+
+/* Deep wine with rose gold. Rich and warm for a festive campaign. */
+[data-palette='wine-rose'] {
+  --c-bg:#1a0f13; --c-bg2:#251419; --c-surface:#251419; --c-line:#3a2229;
+  --c-ink:#f7ebe9; --c-muted:#a9908f;
+  --c-brand:#d08a72; --c-brand-soft:#2d181e; --c-onbrand:#1a0f13;
+  --c-accent:#d08a72; --c-sale:#e0806f; --c-ok:#84bf9c;
+  color-scheme: dark;
+}
+
+/* ══════════════════════════════════════ BASE ════════════════════════════ */
+/* Lives in the base layer so `border-transparent`, `border-accent` and friends
+   still win — a bare `*` rule out here would come after the utilities. */
+@layer base {
+  * { border-color: var(--c-line); }
+}
+
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+
+body {
+  background: var(--c-bg);
+  color: var(--c-ink);
+  font-family: var(--f-body);
+  font-size: var(--body-size);
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+h1, h2, h3, h4, .display {
+  font-family: var(--f-display);
+  font-weight: var(--h-weight);
+  letter-spacing: var(--h-tracking);
+  line-height: 1.14;
+}
+
+::selection { background: var(--c-brand); color: var(--c-onbrand); }
+:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-track { background: var(--c-bg2); }
+::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--c-muted) 38%, transparent);
+  border-radius: 99px; border: 3px solid var(--c-bg2);
+}
+::-webkit-scrollbar-thumb:hover { background: color-mix(in oklab, var(--c-muted) 62%, transparent); }
+
+/* ═══════════════════════════════════ LAYOUT ═════════════════════════════ */
+.wrap { max-width: var(--wrap); margin-inline: auto; padding-inline: 1.25rem; }
+@media (min-width: 1024px) { .wrap { padding-inline: 2rem; } }
+
+/* Last line of defence. Every known overflow is fixed at its source, but one
+   long unbroken word in a product name or a pasted address should degrade into
+   a wrapped line, never into a page that slides sideways under the thumb.
+   `clip` rather than `hidden` because `hidden` would silently break the sticky
+   header. */
+html, body { overflow-x: clip; max-width: 100%; }
+
+/* Grid and flex children default to `min-width: auto`, which means they refuse
+   to shrink below their content and push everything else off-screen. This is
+   the single most common cause of a sideways-scrolling page, so the page
+   scaffolding opts out of it by default. */
+.wrap > * { min-width: 0; }
+
+/* Horizontal rails (reviews, category scrollers) keep their own scrollbar out
+   of the way -- the arrows and snap points are the affordance instead. */
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.sec { padding-block: var(--sec-py); }
+.sec-sm { padding-block: calc(var(--sec-py) * 0.62); }
+
+/* Studio's fixed sidebar; every other design leaves --sidebar at 0. */
+@media (min-width: 1024px) {
+  .shell { padding-left: var(--sidebar); }
+}
+
+/* ═════════════════════════════════ TYPOGRAPHY ═══════════════════════════ */
+.eyebrow {
+  font-family: var(--f-body);
+  font-size: var(--eyebrow-size);
+  font-weight: 500;
+  letter-spacing: var(--eyebrow-tracking);
+  text-transform: uppercase;
+  color: var(--c-accent);
+}
+.h-hero { font-size: calc(2.4rem * var(--h-scale)); }
+.h-sec { font-size: calc(1.9rem * var(--h-scale)); }
+@media (min-width: 640px) {
+  .h-hero { font-size: calc(3.3rem * var(--h-scale)); }
+  .h-sec { font-size: calc(2.25rem * var(--h-scale)); }
+}
+@media (min-width: 1024px) {
+  .h-hero { font-size: calc(3.9rem * var(--h-scale)); }
+  .h-sec { font-size: calc(2.5rem * var(--h-scale)); }
+}
+.balance { text-wrap: balance; }
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* ═══════════════════════════════════ SURFACES ═══════════════════════════ */
+.panel {
+  background: var(--c-surface);
+  border: var(--card-border) solid var(--c-line);
+  border-radius: var(--r-card);
+}
+.raised { box-shadow: var(--shadow-card); }
+.rule { height: 1px; background: var(--c-line); }
+
+/* Studio cards are borderless; give them the faintest hairline where useful. */
+[data-design='studio'] .panel {
+  border-width: 1px;
+  border-color: color-mix(in oklab, var(--c-line) 60%, transparent);
+}
+
+/* ═══════════════════════════════════ BUTTONS ════════════════════════════ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: var(--btn-pad);
+  border-radius: var(--r-btn);
+  font-family: var(--f-body);
+  font-size: var(--btn-size);
+  font-weight: 500;
+  letter-spacing: var(--btn-tracking);
+  text-transform: var(--btn-transform);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease,
+    box-shadow 0.2s ease, transform 0.12s ease, opacity 0.2s ease;
+}
+/* A button is a flex child like any other: without this it refuses to shrink
+   below its label and pushes the whole row past the edge of the screen. */
+.btn { min-width: 0; }
+.btn:disabled { opacity: 0.42; cursor: not-allowed; }
+.btn:not(:disabled):active { transform: translateY(1px); }
+
+.btn-primary { background: var(--c-brand); color: var(--c-onbrand); border: 1px solid var(--c-brand); }
+.btn-primary:not(:disabled):hover { background: color-mix(in oklab, var(--c-brand) 84%, var(--c-ink)); }
+
+.btn-accent { background: var(--c-accent); color: var(--c-onbrand); border: 1px solid var(--c-accent); }
+.btn-accent:not(:disabled):hover { background: color-mix(in oklab, var(--c-accent) 84%, var(--c-ink)); }
+
+.btn-outline { background: transparent; color: var(--c-ink); border: 1px solid var(--c-line); }
+.btn-outline:not(:disabled):hover { border-color: var(--c-brand); color: var(--c-brand); background: var(--c-brand-soft); }
+
+.btn-ghost { background: transparent; color: var(--c-brand); border: 1px solid transparent; }
+.btn-ghost:hover { background: var(--c-brand-soft); }
+
+.btn-lg {
+  /* The padding used to be a flat 2.4rem a side, which on a 320px phone made
+     a two-word button wider than the column it sat in. */
+  padding: 1.05rem clamp(1.25rem, 6vw, 2.4rem);
+  font-size: calc(var(--btn-size) + 0.04rem);
+  max-width: 100%;
+}
+.btn-sm { padding: 0.55rem 1.1rem; font-size: calc(var(--btn-size) - 0.04rem); }
+
+/* Touch screens get a floor on every button and link-button. A 33px control is
+   inside the margin of error for a thumb; 40px is not. Pointer devices keep the
+   tighter sizing, so nothing on a desktop grows. */
+@media (pointer: coarse) {
+  .btn { min-height: 44px; }
+  .btn-sm { min-height: 40px; }
+}
+
+/* ════════════════════════════════════ FORMS ═════════════════════════════ */
+.field {
+  width: 100%;
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: min(var(--r-btn), 14px);
+  padding: 0.72rem 0.95rem;
+  color: var(--c-ink);
+  font-size: 0.9rem;
+  font-family: var(--f-body);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.field::placeholder { color: color-mix(in oklab, var(--c-muted) 72%, transparent); }
+.field:focus {
+  outline: none;
+  border-color: var(--c-brand);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--c-brand) 14%, transparent);
+}
+.field-label {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--c-ink);
+  margin-bottom: 0.35rem;
+}
+select.field { appearance: none; }
+select.field option { background: var(--c-surface); color: var(--c-ink); }
+
+/* ════════════════════════════════════ BADGES ════════════════════════════ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: min(var(--r-btn), 6px);
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.5;
+  border: 1px solid;
+}
+.badge-sale { background: color-mix(in oklab, var(--c-sale) 12%, transparent); border-color: color-mix(in oklab, var(--c-sale) 34%, transparent); color: var(--c-sale); }
+.badge-ok { background: color-mix(in oklab, var(--c-ok) 12%, transparent); border-color: color-mix(in oklab, var(--c-ok) 34%, transparent); color: var(--c-ok); }
+.badge-brand { background: var(--c-brand-soft); border-color: color-mix(in oklab, var(--c-brand) 26%, transparent); color: var(--c-brand); }
+.badge-neutral { background: var(--c-bg2); border-color: var(--c-line); color: var(--c-muted); }
+.badge-solid { background: var(--c-brand); border-color: var(--c-brand); color: var(--c-onbrand); }
+
+/* ═════════════════════════════ MICRO-INTERACTIONS ══════════════════════ */
+.link-underline {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  transition: background-size 0.28s ease;
+}
+.link-underline:hover, .link-underline[data-active='true'] { background-size: 100% 1px; }
+
+.card-hover { transition: box-shadow 0.28s ease, border-color 0.28s ease, transform 0.28s ease; }
+.card-hover:hover { box-shadow: var(--shadow-pop); border-color: color-mix(in oklab, var(--c-brand) 26%, var(--c-line)); }
+
+.img-zoom { transition: transform 0.85s cubic-bezier(0.22, 0.61, 0.36, 1); }
+.group:hover .img-zoom { transform: scale(1.05); }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+.skeleton {
+  background: linear-gradient(90deg,
+    var(--c-bg2) 25%,
+    color-mix(in oklab, var(--c-bg2) 55%, var(--c-surface)) 50%,
+    var(--c-bg2) 75%);
+  background-size: 200% 100%;
+  animation: skeleton 1.4s ease-in-out infinite;
+}
+@keyframes skeleton { to { background-position: -200% 0; } }
+
+@keyframes marquee { to { transform: translateX(-50%); } }
+.marquee-track { display: flex; width: max-content; animation: marquee 46s linear infinite; }
+.marquee-wrap:hover .marquee-track { animation-play-state: paused; }
+
+/* ══════════════════════════════════ ADMIN ═══════════════════════════════ */
+.stat-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-card);
+  padding: 1.15rem 1.25rem;
+  box-shadow: var(--shadow-card);
+}
+.table-row { transition: background-color 0.15s ease; }
+.table-row:hover { background: var(--c-bg2); }
+
+.line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
