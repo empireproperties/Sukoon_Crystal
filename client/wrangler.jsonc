@@ -14,10 +14,15 @@
        lets the router read the path. */
     "not_found_handling": "single-page-application",
 
-    /* The Worker sees every request before the asset router does. Required:
-       the SPA fallback above matches *everything*, so without this the API
-       proxy in worker.js would never run. */
-    "run_worker_first": true
+    /* These two paths reach the Worker before the asset router; everything
+       else is served straight from the CDN without waking it.
+       Both halves matter. Without this the SPA fallback above would answer
+       /api/products with index.html -- once not_found_handling is
+       single-page-application every path matches an asset, so the proxy would
+       never run. And scoping it to these two prefixes rather than `true`
+       keeps page and image requests off the Worker request meter entirely,
+       which is what makes a busy day fit inside the free plan. */
+    "run_worker_first": ["/api/*", "/uploads/*"]
   },
 
   "vars": {
@@ -26,6 +31,13 @@
        dashboard under Settings > Variables, so the address of the backend is
        not baked into the repository and can change without a redeploy. */
     "API_ORIGIN": ""
+  },
+
+  /* Wakes the scheduled() handler in worker.js, which pings the API so a
+     free-tier host does not put it to sleep. Remove this once the API runs
+     somewhere that stays up on its own. */
+  "triggers": {
+    "crons": ["*/10 * * * *"]
   },
 
   "observability": {

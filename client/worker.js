@@ -12,9 +12,10 @@
  * treating it as a cross-origin request, which would drag in CORS preflights
  * and cookie rules for no benefit.
  *
- * `run_worker_first` is set in wrangler.jsonc so this runs before the asset
- * router. Without it the SPA fallback would answer /api/products with
- * index.html -- every asset path matches once not_found_handling is
+ * `run_worker_first` in wrangler.jsonc lists exactly these two prefixes, so
+ * this runs before the asset router for them and not at all for anything else.
+ * Without it the SPA fallback would answer /api/products with index.html --
+ * every path matches an asset once not_found_handling is
  * single-page-application, so the Worker would never see the request.
  */
 
@@ -48,5 +49,26 @@ export default {
     }
 
     return env.ASSETS.fetch(request);
+  },
+
+  /* Keeps a free-tier API awake.
+   *
+   * Render's free plan stops the server after 15 minutes with no traffic, and
+   * starting it again takes the better part of a minute -- which the next
+   * shopper spends looking at an empty page. This pings /api/health every ten
+   * minutes so the idle timer never runs out.
+   *
+   * Cron triggers are free, and one request every ten minutes is ~4,300 a
+   * month against a limit of 100,000 a day, so this costs nothing on either
+   * side. Delete the `triggers` block in wrangler.jsonc once the API moves to
+   * a host that does not sleep. */
+  async scheduled(_event, env, ctx) {
+    if (!env.API_ORIGIN) return;
+    ctx.waitUntil(
+      fetch(new URL('/api/health', env.API_ORIGIN)).catch(() => {
+        /* A failed ping is not worth retrying: the next one is ten minutes
+           away, and the API being down is not something this can fix. */
+      }),
+    );
   },
 };
