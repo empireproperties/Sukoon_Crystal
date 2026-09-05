@@ -50,25 +50,4 @@ export default {
 
     return env.ASSETS.fetch(request);
   },
-
-  /* Keeps a free-tier API awake.
-   *
-   * Render's free plan stops the server after 15 minutes with no traffic, and
-   * starting it again takes the better part of a minute -- which the next
-   * shopper spends looking at an empty page. This pings /api/health every ten
-   * minutes so the idle timer never runs out.
-   *
-   * Cron triggers are free, and one request every ten minutes is ~4,300 a
-   * month against a limit of 100,000 a day, so this costs nothing on either
-   * side. Delete the `triggers` block in wrangler.jsonc once the API moves to
-   * a host that does not sleep. */
-  async scheduled(_event, env, ctx) {
-    if (!env.API_ORIGIN) return;
-    ctx.waitUntil(
-      fetch(new URL('/api/health', env.API_ORIGIN)).catch(() => {
-        /* A failed ping is not worth retrying: the next one is ten minutes
-           away, and the API being down is not something this can fix. */
-      }),
-    );
-  },
 };

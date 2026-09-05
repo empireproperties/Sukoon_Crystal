@@ -33,13 +33,6 @@
     "API_ORIGIN": ""
   },
 
-  /* Wakes the scheduled() handler in worker.js, which pings the API so a
-     free-tier host does not put it to sleep. Remove this once the API runs
-     somewhere that stays up on its own. */
-  "triggers": {
-    "crons": ["*/10 * * * *"]
-  },
-
   "observability": {
     "enabled": true
   }
