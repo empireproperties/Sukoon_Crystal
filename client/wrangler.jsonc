@@ -1,0 +1,34 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sukoon-crystal",
+  "main": "worker.js",
+  "compatibility_date": "2025-09-01",
+
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+
+    /* React Router owns the URLs. Without this, a visitor opening
+       /product/rose-quartz directly -- or refreshing on it -- gets a 404,
+       because there is no such file on disk. This hands them index.html and
+       lets the router read the path. */
+    "not_found_handling": "single-page-application",
+
+    /* The Worker sees every request before the asset router does. Required:
+       the SPA fallback above matches *everything*, so without this the API
+       proxy in worker.js would never run. */
+    "run_worker_first": true
+  },
+
+  "vars": {
+    /* Where the Express API lives, e.g. "https://sukoon-api.up.railway.app".
+       Left empty here on purpose -- set the real value in the Cloudflare
+       dashboard under Settings > Variables, so the address of the backend is
+       not baked into the repository and can change without a redeploy. */
+    "API_ORIGIN": ""
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}

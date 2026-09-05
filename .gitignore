@@ -1,5 +1,8 @@
 node_modules/
 dist/
+
+# Wrangler's local state and dev caches.
+.wrangler/
 .dist/
 shots/
 *.log
