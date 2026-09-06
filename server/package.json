@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "node --watch index.js",
     "start": "node index.js",
+    "build": "echo \"No build step -- the API runs from source.\"",
     "seed": "node seed.js",
     "import": "node import-shopify.js",
     "images": "node download-images.js",
