@@ -40,8 +40,17 @@ export default function Logo({
   to = '/',
 }) {
   const { settings } = useShop();
-  /* An uploaded logo wins; otherwise the bundled artwork. */
-  const src = settings?.logo || LOGO_SRC;
+
+  /* A logo the owner uploaded wins; otherwise the bundled artwork.
+     The one exception is the old generated mark: `settings.logo` still holds a
+     Cloudinary link to `sukoon/brand/logo-mark`, written long before the master
+     artwork was added to the repo. Nothing on the server maintains that value,
+     so it just sat in the database outranking the real logo and the header kept
+     serving the superseded mark. Treating that one public id as "unset" lets
+     the bundled artwork through without a database migration, and a genuinely
+     new upload from Admin > Appearance still takes precedence. */
+  const stored = settings?.logo || '';
+  const src = stored && !/sukoon\/brand\/logo-mark/.test(stored) ? stored : LOGO_SRC;
 
   const inner = (
     <>
