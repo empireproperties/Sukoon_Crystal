@@ -1,0 +1,85 @@
+# Render blueprint for the Sukoon API.
+#
+# Render reads this when you pick "New > Blueprint" and point it at this repo,
+# so the service, its root directory, its health check and the full list of
+# environment variables come from version control rather than from a form
+# somebody has to fill in correctly from memory.
+#
+# Only the *names* of the secrets live here. `sync: false` means Render asks you
+# for the value on first deploy and then keeps it -- nothing sensitive is ever
+# committed. Copy each value from server/.env.
+#
+# The frontend is NOT here. It is a Cloudflare Worker (client/wrangler.jsonc)
+# and is deployed separately; this file covers the API it talks to.
+
+services:
+  - type: web
+    name: sukoon-api
+    runtime: node
+    rootDir: server
+    # Free is enough to prove the deploy and costs nothing. The catch is that a
+    # free instance sleeps after ~15 minutes idle and the next shopper waits
+    # around 30 seconds for it to wake, which on a storefront reads as broken.
+    # Change this one line to `starter` before you send real traffic anywhere.
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    # Cheap, unauthenticated, and it reports the product count, so a green check
+    # here means the database connected -- not merely that Node booted.
+    healthCheckPath: /api/health
+    autoDeploy: true
+
+    envVars:
+      # ---- required ----
+      # CockroachDB. Cockroach Cloud > Connect > General connection string.
+      # URL-encode the password: @ becomes %40. Without this the server falls
+      # back to a local JSON file that every redeploy erases.
+      - key: DATABASE_URL
+        sync: false
+      # Any random string, 32+ chars. Signs admin tokens; changing it logs
+      # every admin out. Generate one with:
+      #   node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+      - key: AUTH_SECRET
+        sync: false
+      # Without this, admin image uploads land on the container disk and vanish
+      # on the next deploy.
+      - key: CLOUDINARY_URL
+        sync: false
+
+      # ---- canonical host ----
+      # The address visitors use, which is the Cloudflare Worker, NOT this API's
+      # onrender.com URL. Canonical tags and the sitemap are built from it, so
+      # getting it wrong points Google at the wrong domain.
+      - key: SITE_URL
+        sync: false
+
+      # ---- review videos on R2 ----
+      # All five are needed together. If any is missing the server falls back to
+      # Cloudinary, which works but meters bandwidth.
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        sync: false
+      - key: R2_PUBLIC_BASE
+        sync: false
+      - key: R2_PREFIX
+        value: reviews
+
+      # ---- payments ----
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      # Set this to the same string you paste into the Razorpay webhook form.
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+
+      # ---- birth charts ----
+      - key: FREE_ASTRO_API_KEY
+        sync: false
+
+      # PORT is set by Render itself and read by server/index.js. Do not add it.

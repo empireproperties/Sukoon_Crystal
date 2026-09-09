@@ -46,7 +46,25 @@ Railway and Render both work. Railway is used below; Render is the same shape.
 | `RAZORPAY_KEY_SECRET` | For payments | Same page. |
 | `RAZORPAY_WEBHOOK_SECRET` | For payments | Set in step 3 below. |
 | `FREE_ASTRO_API_KEY` | For birth charts | freeastroapi.com → Dashboard → Keys. |
+| `SITE_URL` | For SEO | The address **visitors** use — the Cloudflare Worker URL or your custom domain, not this API's own URL. Canonical tags and the sitemap are built from it. |
+| `R2_ACCOUNT_ID` | For review videos | Cloudflare → R2 → the bucket's S3 API endpoint; it is the hash before `.r2.cloudflarestorage.com`. |
+| `R2_ACCESS_KEY_ID` | For review videos | R2 → Manage API tokens → Create (Object Read & Write, scoped to the bucket). |
+| `R2_SECRET_ACCESS_KEY` | For review videos | Same screen. Shown once. |
+| `R2_BUCKET` | For review videos | The bucket name, e.g. `sukoon-crystal`. |
+| `R2_PUBLIC_BASE` | For review videos | The bucket's public address, no trailing slash. R2 → Public Development URL, or a custom domain. |
+| `R2_PREFIX` | No | Folder inside the bucket. Defaults to `reviews`. |
 | `PORT` | No | The host sets this itself. |
+
+All five `R2_*` credentials are needed together. Miss one and the server falls
+back to Cloudinary for video, which works but meters bandwidth.
+
+### Faster: deploy from the blueprint
+
+[`render.yaml`](render.yaml) declares the service and every variable above. On
+Render pick **New → Blueprint**, point it at this repo, and it prompts for each
+secret instead of you filling in a form from memory. The blueprint ships with
+`plan: free`; change that one line to `starter` before real traffic, because a
+free instance sleeps after ~15 minutes and the next shopper waits ~30 seconds.
 
 **`AUTH_SECRET` is the one people forget.** Leave it out and the server generates
 a random secret at startup ([`server/auth.js`](server/auth.js)). Every restart
