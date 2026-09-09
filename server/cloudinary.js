@@ -97,6 +97,48 @@ export function uploadBuffer(buffer, { filename, folder = FOLDER } = {}) {
   });
 }
 
+/* Video delivery is transformed separately from images: f_auto still picks the
+   container, but q_auto:good and a 720p ceiling matter far more here, because a
+   phone-shot portrait clip is often 4K and nobody watches a review at 4K. */
+const VIDEO_DELIVERY = process.env.CLOUDINARY_VIDEO_TRANSFORM || 'f_auto,q_auto:good,h_1280,c_limit';
+
+/**
+ * The fallback path for a review video when R2 is not configured. Cloudinary
+ * will happily host it; see server/r2.js for why that is second choice rather
+ * than first -- video egress is what costs money, and Cloudinary meters it.
+ *
+ * `resource_type: 'video'` is what routes this to the video pipeline. Without
+ * it Cloudinary tries to parse the bytes as an image and rejects the upload.
+ */
+export function uploadVideoBuffer(buffer, { filename, folder = FOLDER } = {}) {
+  const base = (filename || 'review').replace(/\.[^.]+$/, '').replace(/[^\w-]/g, '_').slice(-60);
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: `${folder}/reviews`,
+        resource_type: 'video',
+        use_filename: true,
+        filename_override: base,
+        unique_filename: true,
+      },
+      (err, res) => {
+        if (err) return reject(new Error(err.message || String(err)));
+        const url = VIDEO_DELIVERY
+          ? res.secure_url.replace('/upload/', `/upload/${VIDEO_DELIVERY}/`)
+          : res.secure_url;
+        resolve({
+          url,
+          publicId: res.public_id,
+          bytes: res.bytes,
+          duration: res.duration || null,
+          storage: 'cloudinary',
+        });
+      }
+    );
+    stream.end(buffer);
+  });
+}
+
 /* Same deep walk as the local downloader: find every CDN URL, then rewrite. */
 function collectUrls(node, out = new Set()) {
   if (typeof node === 'string') {

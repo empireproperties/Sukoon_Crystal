@@ -75,7 +75,7 @@ function Filters({ zodiac, chakra, maxPrice, q, setParam, clearAll, activeCount 
                 }`}
               >
                 <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border ${
-                  (maxPrice || '') === b.id ? 'border-brand bg-brand text-white' : 'border-line'
+                  (maxPrice || '') === b.id ? 'border-brand bg-brand text-onbrand' : 'border-line'
                 }`}>
                   {(maxPrice || '') === b.id && <Check size={9} strokeWidth={3.5} />}
                 </span>
@@ -206,14 +206,44 @@ export default function Shop() {
         </div>
       </div>
 
-      {/* category tabs */}
+      {/* ------------------------------------------ category navigation */}
+      {/* Two renderings of the same five links. A phone gets chips that wrap;
+          from `sm` up it is the underlined tab strip.
+
+          The phone used to get that same strip as a horizontal scroller, which
+          was the wrong shape for the job: it put Rudraksha and Sukoon Special
+          off the right edge with no visible cue that they were there, so two of
+          five categories were effectively invisible on the most common screen.
+          Chips wrap into three short rows and every category stays on screen. */}
       <div className="border-b border-line bg-surface">
-        <div className="wrap no-scrollbar flex gap-1 overflow-x-auto">
+        <div className="wrap flex flex-wrap gap-2 py-3 sm:hidden">
           {CATEGORIES.map((c) => (
             <Link
               key={c.slug}
               to={c.slug === 'all' ? '/shop' : `/shop/${c.slug}`}
-              className={`whitespace-nowrap border-b-2 px-3.5 py-3.5 text-[0.82rem] font-medium transition-colors ${
+              aria-current={cat === c.slug ? 'page' : undefined}
+              className={`rounded-[var(--r-btn)] border px-3 py-2 text-[0.8rem] font-medium transition-colors ${
+                cat === c.slug
+                  ? 'border-brand bg-brand text-onbrand'
+                  : 'border-line text-muted hover:border-brand hover:text-brand'
+              }`}
+            >
+              {c.name}
+            </Link>
+          ))}
+        </div>
+
+        <div className="wrap no-scrollbar hidden gap-1 overflow-x-auto sm:flex">
+          {CATEGORIES.map((c) => (
+            <Link
+              key={c.slug}
+              to={c.slug === 'all' ? '/shop' : `/shop/${c.slug}`}
+              aria-current={cat === c.slug ? 'page' : undefined}
+              /* `shrink-0` keeps this a scroller rather than a pile-up: a flex
+                 child defaults to shrink:1, so the tabs would otherwise be
+                 squeezed below their own labels and the text would overlap.
+                 It only ever needs to scroll on a narrow tablet. */
+              className={`shrink-0 whitespace-nowrap border-b-2 px-3.5 py-3.5 text-[0.82rem] font-medium transition-colors ${
                 cat === c.slug ? 'border-brand text-brand' : 'border-transparent text-muted hover:text-ink'
               }`}
             >

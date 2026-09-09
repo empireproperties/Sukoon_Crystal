@@ -6,7 +6,10 @@ import fs from 'fs';
 import multer from 'multer';
 import { fileURLToPath } from 'url';
 import { db, save, saveNow, uid, initDb } from './db.js';
-import { configureCloudinary, uploadBuffer } from './cloudinary.js';
+import { DEFAULT_DESIGN, DEFAULT_PALETTE, isLivePalette } from './theme.js';
+import { configureCloudinary, uploadBuffer, uploadVideoBuffer } from './cloudinary.js';
+import { configureR2, uploadVideoToR2, deleteFromR2, isOurs as isOurR2Url, keyFromUrl as r2KeyFromUrl } from './r2.js';
+import { seoForPath, headTagsFor, sitemapXml, robotsTxt, siteUrl } from './seo.js';
 import {
   requireAuth,
   requireCustomer,
@@ -58,6 +61,11 @@ app.use('/uploads', express.static(UPLOADS));
 
 const cloud = configureCloudinary();
 
+/* Review videos prefer R2 because its egress is free; see server/r2.js. When it
+   is not set up they fall back to Cloudinary, and then to local disk, so the
+   feature works on a laptop with no credentials at all. */
+const r2 = configureR2();
+
 /* Real raster images only. SVG is deliberately excluded: it is a document
    format that can carry script, and serving one from our own origin would run
    that script as us. There was no filter here at all before. */
@@ -89,6 +97,26 @@ const customerUpload = multer({
   }),
   limits: { fileSize: 5 * 1024 * 1024, files: 1 },
   fileFilter: imagesOnly,
+});
+
+/* Containers a browser can actually play back. WebM and MP4 cover every desktop
+   browser; `video/quicktime` is what an iPhone sends and is an MP4 container in
+   all but name, so it is accepted and stored with an .mp4 extension. */
+const VIDEO_TYPES = new Set(['video/mp4', 'video/webm', 'video/quicktime', 'video/x-m4v']);
+
+/* 60MB is roughly a minute of 1080p from a phone. The cap is a real product
+   decision, not just a safety valve: these are meant to be short clips, and the
+   client refuses anything longer before it starts uploading. */
+const VIDEO_MAX_BYTES = Number(process.env.REVIEW_VIDEO_MAX_MB || 60) * 1024 * 1024;
+
+const videoUpload = multer({
+  /* Always memory: both remote backends take a buffer, and the disk fallback
+     writes the buffer itself so the two paths cannot diverge. */
+  storage: multer.memoryStorage(),
+  limits: { fileSize: VIDEO_MAX_BYTES, files: 1 },
+  fileFilter: (_req, file, cb) => (VIDEO_TYPES.has(file.mimetype)
+    ? cb(null, true)
+    : cb(new Error('Only MP4, MOV or WebM video can be uploaded.'))),
 });
 
 /* ------------------------------------------------------------------ helpers */
@@ -1083,11 +1111,16 @@ app.put('/api/pages/:handle', auth, (req, res) => {
 /* ------------------------------------------------------------------ reviews */
 
 /* Reviews arrive from the public, so nothing is shown until an admin approves
-   it. `video` accepts a YouTube or Instagram link as well as a file URL --
-   see normaliseVideo() for why hosting the files here is not the default. */
+   it. `video` accepts a YouTube or Instagram link, or the URL of a clip the
+   reviewer uploaded through POST /api/reviews/video. */
 const REVIEW_STATUSES = ['pending', 'approved', 'rejected'];
 
-/** Turns a share link into something embeddable, and rejects anything else. */
+/** Turns a share link into something embeddable, and rejects anything else.
+ *
+ *  Everything about where a file lives is derived here from the URL, never
+ *  taken from the request body. A review is posted by an anonymous visitor, so
+ *  a client-supplied storage key would be a request to delete whichever object
+ *  it named the next time that review was removed. */
 function normaliseVideo(raw) {
   const url = String(raw || '').trim();
   if (!url) return null;
@@ -1098,11 +1131,113 @@ function normaliseVideo(raw) {
   const ig = url.match(/instagram\.com\/(?:p|reel|reels)\/([\w-]+)/);
   if (ig) return { kind: 'instagram', id: ig[1], embed: `https://www.instagram.com/reel/${ig[1]}/embed`, url };
 
-  /* A direct file we host ourselves (Cloudinary). Allowed, but bandwidth-heavy. */
-  if (/^https:\/\/[^\s]+\.(mp4|webm|mov)(\?|$)/i.test(url)) return { kind: 'file', embed: url, url };
+  /* One of ours on R2. The key comes with it so deleting the review can delete
+     the object rather than leaving it paid for and unreachable. */
+  if (isOurR2Url(url)) return { kind: 'file', storage: 'r2', key: r2KeyFromUrl(url), embed: url, url };
+
+  /* One of ours on Cloudinary, or on our own disk in offline development. */
+  if (/^https:\/\/res\.cloudinary\.com\/[^/]+\/video\/upload\//.test(url)) {
+    return { kind: 'file', storage: 'cloudinary', embed: url, url };
+  }
+  if (/^\/uploads\/[\w.-]+\.(mp4|webm|mov)$/i.test(url)) {
+    return { kind: 'file', storage: 'local', embed: url, url };
+  }
+
+  /* Any other direct file. Playable, but hosted by someone else, so it can
+     vanish or change under us -- the admin sees `external` and can judge. */
+  if (/^https:\/\/[^\s]+\.(mp4|webm|mov)(\?|$)/i.test(url)) {
+    return { kind: 'file', storage: 'external', embed: url, url };
+  }
 
   return undefined;                       /* undefined = supplied but unusable */
 }
+
+/* An anonymous endpoint that accepts 60MB is an invitation, so each address gets
+   a small budget. In memory on purpose: the API runs as a single process, and a
+   limiter that needed Redis would be one more thing to keep alive for a shop
+   that takes a handful of reviews a week. */
+const VIDEO_QUOTA = { perWindow: 3, windowMs: 30 * 60 * 1000 };
+const videoUploads = new Map();           /* ip -> timestamps within the window */
+
+const recentUploads = (ip, now) =>
+  (videoUploads.get(ip) || []).filter((t) => now - t < VIDEO_QUOTA.windowMs);
+
+/** Read-only. Asked before a single byte of the body is parsed, so an address
+ *  that has spent its budget is turned away without our reading 60MB of it. */
+function overVideoQuota(ip) {
+  const now = Date.now();
+  /* Sweep while we are here; without this the map grows for the life of the
+     process, one entry per address that ever uploaded. */
+  for (const [key, times] of videoUploads) {
+    if (!times.some((t) => now - t < VIDEO_QUOTA.windowMs)) videoUploads.delete(key);
+  }
+  return recentUploads(ip, now).length >= VIDEO_QUOTA.perWindow;
+}
+
+/** Only a stored video spends budget. A reviewer whose first pick was a photo
+ *  by mistake should not lose a third of their allowance to the typo. */
+function recordVideoUpload(ip) {
+  const now = Date.now();
+  videoUploads.set(ip, [...recentUploads(ip, now), now]);
+}
+
+/**
+ * A reviewer's short clip. Public, because someone writing a review is not
+ * signed in -- which is exactly why it is capped, type-checked and rate
+ * limited. The response is only a URL; nothing is attached to a review until
+ * POST /api/reviews arrives carrying it, and nothing is shown to a visitor
+ * until an admin approves that review.
+ *
+ * multer's errors are handled inline rather than by the error middleware above:
+ * that handler is registered further up the stack, so an error raised down here
+ * would never reach it.
+ */
+app.post('/api/reviews/video', (req, res) => {
+  /* The quota is protection against anonymous abuse, and a signed-in admin is
+     neither. They are also the one person who legitimately uploads a run of
+     clips in a sitting -- a backlog of videos customers sent over WhatsApp. */
+  const isAdmin = Boolean(verifyToken(String(req.headers.authorization || '').replace(/^Bearer /, ''), 'admin'));
+
+  /* Before multer, not after: the point of a quota on a 60MB endpoint is to
+     avoid reading the 60MB. */
+  if (!isAdmin && overVideoQuota(req.ip)) {
+    return res.status(429).json({ error: 'That is a few videos in a short time. Please try again a little later.' });
+  }
+
+  videoUpload.single('file')(req, res, async (err) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({
+          error: `That video is too large. Please keep it under ${Math.round(VIDEO_MAX_BYTES / (1024 * 1024))}MB — around a minute of phone footage.`,
+        });
+      }
+      return res.status(415).json({ error: err.message || 'That file could not be uploaded.' });
+    }
+    if (!req.file) return res.status(400).json({ error: 'No video received.' });
+
+    const { buffer, mimetype, originalname } = req.file;
+
+    try {
+      const stored = r2.configured
+        ? await uploadVideoToR2(buffer, { contentType: mimetype })
+        : cloud.configured
+          ? await uploadVideoBuffer(buffer, { filename: originalname })
+          /* Offline development, and deliberately last: /uploads does not
+             survive a redeploy, so a live store that lands here has lost its
+             credentials rather than chosen this. */
+          : await (async () => {
+              const name = `${uid('vid')}.${mimetype === 'video/webm' ? 'webm' : 'mp4'}`;
+              await fs.promises.writeFile(path.join(UPLOADS, name), buffer);
+              return { url: `/uploads/${name}`, storage: 'local' };
+            })();
+
+      if (!isAdmin) recordVideoUpload(req.ip);
+      return res.json({ url: stored.url, storage: stored.storage });
+    } catch (e) {
+      return res.status(502).json({ error: `The video could not be stored: ${e.message}` });
+    }
+  });
+});
 
 app.get('/api/reviews', (req, res) => {
   const { product, limit } = req.query;
@@ -1120,7 +1255,7 @@ app.get('/api/reviews/all', auth, (req, res) => {
 });
 
 app.post('/api/reviews', (req, res) => {
-  const { name, rating, title, body, productId, photo, video } = req.body || {};
+  const { name, designation, rating, title, body, productId, photo, video } = req.body || {};
   if (!String(name || '').trim()) return res.status(400).json({ error: 'Please tell us your name.' });
   if (!String(body || '').trim()) return res.status(400).json({ error: 'Please write a few words.' });
 
@@ -1137,6 +1272,9 @@ app.post('/api/reviews', (req, res) => {
   const review = {
     id: uid('rev'),
     name: String(name).trim().slice(0, 60),
+    /* Free text -- "Yoga teacher, Delhi", "Verified buyer". Shown under the
+       name on the storefront, and blank for most people, which is fine. */
+    designation: String(designation || '').trim().slice(0, 80),
     rating: Math.round(stars),
     title: String(title || '').trim().slice(0, 120),
     body: String(body).trim().slice(0, 1500),
@@ -1151,6 +1289,56 @@ app.post('/api/reviews', (req, res) => {
   db.reviews = [review, ...(db.reviews || [])];
   save();
   res.status(201).json({ ok: true, message: 'Thank you. Your review will appear once we have read it.' });
+});
+
+/**
+ * A review the shop enters on someone's behalf.
+ *
+ * Customers send praise by WhatsApp and Instagram far more often than they fill
+ * in a form, and those are the reviews the shop actually has. This is the route
+ * that gets them onto the site.
+ *
+ * Published immediately, and that is the whole difference from the public
+ * route: approval exists to stand between an anonymous stranger and the
+ * storefront, and an admin is already past it. Everything else -- the video
+ * normalising, the rating recount -- is identical.
+ */
+app.post('/api/reviews/admin', auth, (req, res) => {
+  const { name, designation, rating, title, body, productId, photo, video, featured } = req.body || {};
+
+  if (!String(name || '').trim()) return res.status(400).json({ error: 'Whose review is this? Add a name.' });
+  if (!String(body || '').trim()) return res.status(400).json({ error: 'Add the words of the review.' });
+
+  const stars = Number(rating);
+  if (!Number.isFinite(stars) || stars < 1 || stars > 5) {
+    return res.status(400).json({ error: 'Give it a rating between 1 and 5.' });
+  }
+
+  const media = normaliseVideo(video);
+  if (media === undefined) return res.status(400).json({ error: 'That video link cannot be embedded.' });
+
+  const review = {
+    id: uid('rev'),
+    name: String(name).trim().slice(0, 60),
+    designation: String(designation || '').trim().slice(0, 80),
+    rating: Math.round(stars),
+    title: String(title || '').trim().slice(0, 120),
+    body: String(body).trim().slice(0, 1500),
+    productId: productId || null,
+    photo: String(photo || '') || null,
+    video: media,
+    status: 'approved',
+    featured: Boolean(featured),
+    /* So the admin list can tell at a glance which reviews came in through the
+       storefront and which the shop typed in itself. */
+    source: 'admin',
+    createdAt: new Date().toISOString(),
+  };
+
+  db.reviews = [review, ...(db.reviews || [])];
+  save();
+  syncProductRating(review.productId);
+  res.status(201).json(review);
 });
 
 app.put('/api/reviews/:id', auth, (req, res) => {
@@ -1174,6 +1362,18 @@ app.delete('/api/reviews/:id', auth, (req, res) => {
   write('reviews', (db.reviews || []).filter((r) => r.id !== req.params.id));
   save();
   syncProductRating(gone?.productId);
+
+  /* A rejected review's video is storage nobody will ever watch, so it goes
+     with the row. Not awaited, and it cannot throw: the admin's delete has
+     already succeeded and must not appear to fail because a bucket was slow.
+     Cloudinary assets are left alone -- they are in the media library where
+     the owner can see and remove them, and deleting them needs the admin API. */
+  if (gone?.video?.storage === 'r2' && gone.video.key) {
+    deleteFromR2(gone.video.key).then((ok) => {
+      if (!ok) console.warn(`  ! R2 object left behind for deleted review: ${gone.video.key}`);
+    });
+  }
+
   res.json({ ok: true });
 });
 
@@ -1646,6 +1846,52 @@ app.get('/api/analytics/summary', auth, (req, res) => {
    out of a live store. Reseeding is a deliberate act -- run `npm run seed`
    against a local db.json, never against the production database over HTTP. */
 
+/* --------------------------------------------------------------------- SEO */
+
+/* The storefront is a React SPA, so the HTML the CDN serves is an empty shell.
+   These three routes are what the Cloudflare Worker calls to fill it in before
+   it reaches a crawler -- see server/seo.js for why that is necessary at all,
+   and client/worker.js for the splice.
+
+   All three are public and cacheable. The Worker caches them at the edge too;
+   these headers are what let it, and what stops a crawl from becoming a
+   thundering herd against a free-tier API. */
+
+app.get('/api/seo/page', (req, res) => {
+  const seo = seoForPath(req.query.path || '/');
+  res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
+  res.json({
+    title: seo.title,
+    description: seo.description,
+    canonical: seo.canonical,
+    robots: seo.robots,
+    head: headTagsFor(seo),
+    body: seo.body,
+  });
+});
+
+app.get('/api/seo/sitemap.xml', (_req, res) => {
+  res.set('Content-Type', 'application/xml; charset=utf-8');
+  res.set('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
+  res.send(sitemapXml());
+});
+
+app.get('/api/seo/robots.txt', (_req, res) => {
+  res.set('Content-Type', 'text/plain; charset=utf-8');
+  res.set('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
+  res.send(robotsTxt());
+});
+
+/* Served here as well as through the Worker, because the API can be reached
+   directly during development and because a misconfigured Worker should not
+   leave the site with no robots.txt at all. */
+app.get('/robots.txt', (_req, res) => {
+  res.set('Content-Type', 'text/plain; charset=utf-8').send(robotsTxt());
+});
+app.get('/sitemap.xml', (_req, res) => {
+  res.set('Content-Type', 'application/xml; charset=utf-8').send(sitemapXml());
+});
+
 app.get('/api/health', (_req, res) => res.json({ ok: true, products: db.products.length }));
 
 /* Serve the built SPA when it exists (single-command demo deploy). */
@@ -1672,6 +1918,24 @@ console.log(
     ? `  Cloudinary  ->  ${cloud.cloud}  (uploads go to the CDN)`
     : '  Cloudinary  ->  not configured, uploads stay on local disk'
 );
+console.log(`  SEO         ->  canonical host ${siteUrl()}${process.env.SITE_URL ? '' : '  (default; set SITE_URL)'}`);
+console.log(
+  r2.configured
+    ? `  R2          ->  ${r2.bucket}  (review videos, zero egress cost)`
+    : `  R2          ->  not configured, review videos fall back to ${cloud.configured ? 'Cloudinary' : 'local disk'}`
+);
+
+/* A settings row can outlive the colourway it names. Four page templates and
+   their palettes were retired, and the seeded row still asked for one of them,
+   which meant the shop rendered in a palette the CSS no longer defines. Anything
+   the storefront cannot paint is reset to the brand default here, at boot,
+   rather than being papered over on every request. */
+if (db.settings.design !== DEFAULT_DESIGN || !isLivePalette(db.settings.palette)) {
+  const was = db.settings.palette;
+  db.settings = { ...db.settings, design: DEFAULT_DESIGN, palette: DEFAULT_PALETTE };
+  await saveNow();
+  console.log(`  Theme       ->  '${was}' is no longer a colourway; reset to '${DEFAULT_PALETTE}'`);
+}
 
 /* Seeds policy and about copy, but never overwrites a page that already exists
    -- otherwise every restart would undo the owner's edits. */

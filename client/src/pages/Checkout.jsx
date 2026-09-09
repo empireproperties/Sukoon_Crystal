@@ -354,7 +354,7 @@ export default function Checkout() {
                     className="sr-only"
                   />
                   <span className={`mt-0.5 grid h-4.5 w-4.5 shrink-0 place-items-center rounded-full border ${
-                    payment === m.id ? 'border-brand bg-brand text-white' : 'border-line'
+                    payment === m.id ? 'border-brand bg-brand text-onbrand' : 'border-line'
                   }`} style={{ width: 18, height: 18 }}>
                     {payment === m.id && <Check size={10} strokeWidth={3.5} />}
                   </span>

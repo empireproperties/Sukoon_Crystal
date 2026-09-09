@@ -11,9 +11,16 @@ export const BANNER_PALETTES = {
   /* `auto` follows whichever storefront palette is live, so an announcement
      never fights the design it sits above. */
   auto: { bg: 'var(--c-brand-soft)', fg: 'var(--c-ink)', accent: 'var(--c-accent)', label: 'Match the theme' },
-  /* The logo's own disc and foil, so a campaign banner sits in the brand
-     rather than beside it. */
-  green: { bg: '#0f3126', fg: '#f7f2e6', accent: '#d9ae59', label: 'Deep Green' },
+  /* The theme's own brand colour at full strength, and its opposite for the
+     text and the button. Guaranteed to stand off the page in every colourway,
+     which a fixed hex cannot be -- `green` below is invisible on the green
+     colourways, because there the page ground already is that green. */
+  brand: { bg: 'var(--c-brand)', fg: 'var(--c-onbrand)', accent: 'var(--c-onbrand)', label: 'Solid brand colour' },
+  /* The logo's own disc, foil and ivory, hex for hex off the artwork in
+     client/src/assets/logo.jpeg, so a campaign banner sits in the brand rather
+     than beside it. Fixed values on purpose: a banner keeps its colour when the
+     shop changes colourway, which is what `auto` is for. */
+  green: { bg: '#2a513c', fg: '#f5f4f0', accent: '#d4af16', label: 'Sukoon Green' },
   maroon: { bg: '#7a1f2b', fg: '#fff4f0', accent: '#e0a071', label: 'Maroon' },
   charcoal: { bg: '#232323', fg: '#f7f4ee', accent: '#c9a45f', label: 'Charcoal' },
   ink: { bg: '#2a231c', fg: '#fcfaf6', accent: '#c9a24a', label: 'Espresso & Gold' },

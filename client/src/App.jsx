@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, useLocation, Outlet } from 'react-router-dom';
 
 import { ShopProvider, useVisitTracker } from './lib/store.jsx';
+import { useSeo } from './lib/seo.jsx';
 import { AccountProvider } from './lib/account.jsx';
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
@@ -40,6 +41,9 @@ const AdminApp = lazy(() => import('./admin/AdminApp.jsx'));
 function StoreLayout() {
   const { pathname } = useLocation();
   useVisitTracker(pathname);
+  /* Storefront only. The admin is noindex and has no metadata worth keeping
+     in step. */
+  useSeo();
 
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
 

@@ -65,6 +65,10 @@ export const api = {
     request('/auth/password', { method: 'POST', body: { currentPassword, newPassword }, auth: true }),
 
   settings: () => request('/settings'),
+
+  /* Title, description and structured data for one URL, from the same builder
+     the Cloudflare Worker uses -- see server/seo.js. */
+  seoPage: (path) => request(`/seo/page${qs({ path })}`),
   saveSettings: (patch) => request('/settings', { method: 'PUT', body: patch, auth: true }),
 
   categories: () => request('/categories'),
@@ -158,6 +162,21 @@ export const api = {
   savePage: (handle, body) => request(`/pages/${handle}`, { method: 'PUT', body, auth: true }),
 
   reviews: (params) => request(`/reviews${qs(params)}`),
+
+  /* Public by default: whoever is writing the review is a visitor, not an
+     account. The server caps the size, checks the type and rate limits the
+     address, and nothing reaches the storefront until an admin approves the
+     review. Pass `admin` when it is the shop uploading a clip a customer sent
+     them, which skips the per-address quota. */
+  uploadReviewVideo: (file, { admin = false } = {}) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return request('/reviews/video', { method: 'POST', body: fd, auth: admin && 'admin' });
+  },
+
+  /* Publishes straight away -- see the route's comment for why approval is not
+     part of this path. */
+  createReview: (body) => request('/reviews/admin', { method: 'POST', body, auth: true }),
   allReviews: (status) => request(`/reviews/all${qs({ status })}`, { auth: true }),
   submitReview: (body) => request('/reviews', { method: 'POST', body }),
   updateReview: (id, body) => request(`/reviews/${id}`, { method: 'PUT', body, auth: true }),

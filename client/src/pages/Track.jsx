@@ -8,6 +8,7 @@ import { useAccount } from '../lib/account.jsx';
 import { useShop } from '../lib/store.jsx';
 import OrderTimeline, { flowIndex } from '../components/OrderTimeline.jsx';
 import ReturnDialog from '../components/ReturnDialog.jsx';
+import ReviewInvite, { useReviewInvite, ReviewInviteButton } from '../components/ReviewInvite.jsx';
 
 const STATUS_LABEL = {
   placed: 'Placed', confirmed: 'Confirmed', packed: 'Packed',
@@ -125,6 +126,11 @@ function OrderRow({ order, open, onToggle, onReturn, returnable }) {
               {order.status === 'delivered' && returnable && !returnable.ok && (
                 <p className="mt-4 text-[0.78rem] text-muted">{returnable.reason}</p>
               )}
+
+              {/* Always offered once it has arrived, not only the first time.
+                  The dialog fires on its own once per order; this is for
+                  everyone who closed it and came back. */}
+              {order.status === 'delivered' && <ReviewInviteButton order={order} />}
             </div>
           </motion.div>
         )}
@@ -142,6 +148,9 @@ export default function Track() {
   const [eligibility, setEligibility] = useState({});
   const [openId, setOpenId] = useState(null);
   const [returning, setReturning] = useState(null);
+
+  /* Asks for a review the first time a delivered order is seen here. */
+  const [invite, dismissInvite] = useReviewInvite(orders);
 
   /* Guest lookup by order number, for anyone who checked out without an account. */
   const [number, setNumber] = useState(params.get('number') || '');
@@ -243,6 +252,8 @@ export default function Track() {
           )}
         </>
       )}
+
+      {invite && <ReviewInvite order={invite} onClose={dismissInvite} />}
 
       {returning && (
         <ReturnDialog

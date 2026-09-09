@@ -64,8 +64,8 @@ export default function About() {
                 )}
               </div>
               <div className="absolute inset-x-0 bottom-0 bg-brand px-5 py-4 text-center">
-                <p className="font-[var(--font-display)] text-[1.15rem] leading-none text-white">Swati Khanna</p>
-                <p className="mt-1.5 text-[0.68rem] uppercase tracking-[0.2em] text-white/70">
+                <p className="font-[var(--font-display)] text-[1.15rem] leading-none text-onbrand">Swati Khanna</p>
+                <p className="mt-1.5 text-[0.68rem] uppercase tracking-[0.2em] text-onbrand/75">
                   Founder · Astrologer &amp; Numerologist
                 </p>
               </div>

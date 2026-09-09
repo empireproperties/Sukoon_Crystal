@@ -1,14 +1,52 @@
 <!doctype html>
-<html lang="en" data-design="gallery" data-palette="alabaster-gold">
+<html lang="en-IN" data-design="gallery" data-palette="sukoon-signature">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sukoon Crystal Solutions | Certified Astrology &amp; Energised Crystals</title>
+    <!--
+      FALLBACK METADATA.
+
+      Every tag between here and the fonts is a default. In production the
+      Cloudflare Worker strips them and appends the real ones for the URL being
+      served, built by server/seo.js from the database — which is how a product
+      page ends up with its own title, its own price and its own structured
+      data rather than the shop's.
+
+      They are still worth shipping. If the Worker is misconfigured, or the API
+      is down, or someone opens the built files directly, this is what a search
+      result and a WhatsApp link preview fall back to. An empty preview is a
+      link nobody clicks.
+    -->
     <meta
       name="description"
       content="Genuine crystal bracelets, zodiac stones and authentic Rudraksha, chosen for you by certified astrologer Swati Khanna. Free shipping above Rs 999, cash on delivery, and free 15-minute consultations."
     />
-    <meta name="theme-color" content="#1c1b18" />
+    <link rel="canonical" href="https://sukooncrystalsolutions.com/" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Sukoon Crystal Solutions" />
+    <meta property="og:locale" content="en_IN" />
+    <meta property="og:title" content="Sukoon Crystal Solutions | Certified Astrologer-Chosen Crystals &amp; Rudraksha" />
+    <meta
+      property="og:description"
+      content="Genuine crystal bracelets, zodiac gemstones and authentic Rudraksha, chosen from your birth chart by certified astrologer Swati Khanna. Energised before dispatch."
+    />
+    <meta property="og:url" content="https://sukooncrystalsolutions.com/" />
+    <meta
+      property="og:image"
+      content="https://res.cloudinary.com/enf4l41d/image/upload/c_crop,g_center,w_0.93,h_0.93/r_max,w_1200,f_jpg/v1788407185/sukoon/brand/logo-mark.png"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Where the studio is. A shop competing for "crystal shop near me" has to
+         say so in a form a machine can read. -->
+    <meta name="geo.region" content="IN-UP" />
+    <meta name="geo.placename" content="Meerut" />
+    <!-- The logo disc green. Paints the Android address bar and the
+         iOS status bar, so it should match --c-brand of the default colourway. -->
+    <meta name="theme-color" content="#2a513c" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

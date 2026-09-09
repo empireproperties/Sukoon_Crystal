@@ -194,7 +194,22 @@ function Card({ product, config }) {
               /* Sits above the stretched link so the click reaches the button. */
               /* `!px-2` on the phone: the default button padding plus uppercase
                  tracking does not leave room for the label on a two-up grid. */
-              className="btn btn-primary relative z-10 mt-2.5 w-full !py-3 !px-2 !text-[0.66rem] disabled:opacity-45 sm:!px-4 sm:!text-[var(--btn-size)]"
+              /* `!font-semibold`: at 0.66rem with 0.16em of tracking the default
+                 medium weight thins the label out until it reads as grey.
+
+                 The `length:` hint is load-bearing. Without it the arbitrary
+                 value is ambiguous: Tailwind cannot see inside a custom
+                 property, so it guessed colour and emitted `color` rather than
+                 `font-size`. A length is not a valid colour, so from `sm` up the
+                 declaration was invalid at computed-value time, which for an
+                 inherited property like `color` means `inherit` -- the label
+                 took the card's ink and rendered near-black on the green button
+                 at desktop widths while staying correct on a phone.
+
+                 Spelling the bare class out here would be enough for the
+                 scanner to emit that dead colour rule all over again, so this
+                 note describes it instead of quoting it. */
+              className="btn btn-primary relative z-10 mt-2.5 w-full !py-3 !px-2 !text-[0.66rem] !font-semibold disabled:opacity-45 sm:!px-4 sm:!text-[length:var(--btn-size)]"
             >
               {added
                 ? <><Check size={13} strokeWidth={2.4} /> Added</>

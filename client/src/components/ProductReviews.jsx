@@ -5,11 +5,12 @@ import { Star, PenLine, Play, MessageSquare } from 'lucide-react';
 import { api, dateLabel } from '../lib/api.js';
 import { useShop } from '../lib/store.jsx';
 import { Stars } from './Ornaments.jsx';
+import VideoPicker, { MAX_VIDEO_MB } from './VideoPicker.jsx';
 
 /* ---------------------------------------------------------------- form */
 function ReviewForm({ productId, onDone }) {
   const { toast } = useShop();
-  const [form, setForm] = useState({ name: '', rating: 5, title: '', body: '', video: '' });
+  const [form, setForm] = useState({ name: '', designation: '', rating: 5, title: '', body: '', video: '', upload: '' });
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -17,9 +18,14 @@ function ReviewForm({ productId, onDone }) {
     e.preventDefault();
     setBusy(true);
     try {
-      const res = await api.submitReview({ ...form, productId, rating: Number(form.rating) });
+      /* An uploaded clip wins over a pasted link. It is the more deliberate of
+         the two, and a review carries one video, not both. */
+      const { upload, ...rest } = form;
+      const res = await api.submitReview({
+        ...rest, video: upload || form.video, productId, rating: Number(form.rating),
+      });
       toast(res.message, 'success');
-      setForm({ name: '', rating: 5, title: '', body: '', video: '' });
+      setForm({ name: '', designation: '', rating: 5, title: '', body: '', video: '', upload: '' });
       onDone();
     } catch (err) {
       toast(err.message, 'error');
@@ -37,6 +43,16 @@ function ReviewForm({ productId, onDone }) {
         <div>
           <label className="field-label" htmlFor="rv-name">Your name</label>
           <input id="rv-name" className="field" value={form.name} onChange={set('name')} required maxLength={60} />
+          {/* Optional, and shown under the name. "Yoga teacher, Delhi" carries
+              more weight with a reader than a name on its own. */}
+          <input
+            id="rv-role"
+            className="field mt-2"
+            value={form.designation}
+            onChange={set('designation')}
+            maxLength={80}
+            placeholder="What you do, or where you are (optional)"
+          />
         </div>
         <div>
           <span className="field-label">Rating</span>
@@ -62,13 +78,26 @@ function ReviewForm({ productId, onDone }) {
         <textarea id="rv-body" rows={4} className="field" value={form.body} onChange={set('body')} required maxLength={1500} />
       </div>
 
-      <div className="mt-3">
-        <label className="field-label" htmlFor="rv-video">Video link <span className="text-muted">(optional)</span></label>
-        <input id="rv-video" className="field" value={form.video} onChange={set('video')}
-          placeholder="A YouTube or Instagram link" />
-        <p className="mt-1 text-[0.72rem] text-muted">
-          Paste a YouTube or Instagram link and we will show it as a video review.
+      <div className="mt-4 border-t border-line pt-4">
+        <span className="field-label">Add a video <span className="text-muted">(optional)</span></span>
+        <p className="-mt-0.5 mb-2.5 text-[0.75rem] leading-snug text-muted">
+          A short clip of the piece in your hands says more than a paragraph.
+          Up to {MAX_VIDEO_MB}MB, about a minute.
         </p>
+
+        <VideoPicker
+          value={form.upload}
+          onChange={(url) => setForm((f) => ({ ...f, upload: url }))}
+          disabled={busy}
+        />
+
+        {!form.upload && (
+          <div className="mt-3">
+            <label className="field-label" htmlFor="rv-video">Or paste a link</label>
+            <input id="rv-video" className="field" value={form.video} onChange={set('video')}
+              placeholder="A YouTube or Instagram link" />
+          </div>
+        )}
       </div>
 
       <button className="btn btn-primary mt-4" disabled={busy}>
@@ -165,17 +194,26 @@ export default function ProductReviews({ product }) {
                 <div className="flex flex-wrap items-center gap-3">
                   <Stars rating={r.rating} size={12} />
                   <span className="text-[0.88rem] font-medium">{r.name}</span>
+                  {r.designation && <span className="text-[0.76rem] text-muted">· {r.designation}</span>}
                   <span className="text-[0.76rem] text-muted">{dateLabel(r.createdAt)}</span>
                   <span className="badge badge-ok ml-auto">Verified</span>
                 </div>
                 {r.title && <p className="mt-2 text-[0.9rem] font-medium">{r.title}</p>}
                 <p className="mt-1.5 text-[0.9rem] leading-relaxed text-muted">{r.body}</p>
-                {r.video && (
+                {r.video?.kind === 'file' ? (
+                  <video
+                    src={r.video.embed}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    className="mt-3 max-h-[320px] w-full max-w-[240px] rounded bg-black object-contain"
+                  />
+                ) : r.video ? (
                   <a href={r.video.url} target="_blank" rel="noreferrer noopener"
                     className="mt-2.5 inline-flex items-center gap-1.5 text-[0.8rem] text-accent hover:underline">
                     <Play size={12} className="fill-current" /> Watch their video
                   </a>
-                )}
+                ) : null}
               </li>
             ))}
           </ul>

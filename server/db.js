@@ -14,6 +14,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { DEFAULT_DESIGN, DEFAULT_PALETTE } from './theme.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(__dirname, 'data');
@@ -46,7 +47,9 @@ const EMPTY = {
   slides: [],
   returns: [],
   charts: [],
-  settings: { design: 'atelier', palette: 'bone', announcement: '', siteName: 'Sukoon Crystal Solutions' },
+  /* `design` and `palette` name the logo colourway, so a store that has never
+     opened Appearance still looks like the brand mark. */
+  settings: { design: DEFAULT_DESIGN, palette: DEFAULT_PALETTE, announcement: '', siteName: 'Sukoon Crystal Solutions' },
 };
 
 /* Every key above except `settings`, which is a single document. */
@@ -67,6 +70,9 @@ const INDEXES = {
   services: [{ key: { id: 1 }, sparse: true }],
   visits: [{ key: { at: -1 } }],
   payments: [{ key: { id: 1 }, unique: true }, { key: { razorpayOrderId: 1 } }, { key: { createdAt: -1 } }],
+  /* The storefront reads reviews by product and by status on every product
+     page, and the rail sorts pinned-then-newest. */
+  reviews: [{ key: { id: 1 }, unique: true }, { key: { productId: 1, status: 1 } }, { key: { status: 1, createdAt: -1 } }],
 };
 
 let cache = null;

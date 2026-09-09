@@ -4,18 +4,19 @@ import { Check, Eye, ExternalLink, Save, RotateCcw, Upload } from 'lucide-react'
 
 import { api } from '../lib/api.js';
 import { useShop } from '../lib/store.jsx';
-import { PALETTES, getPalette, normalisePalette } from '../theme/designs.js';
+import { PALETTES, getPalette, normalisePalette, DEFAULT_PALETTE } from '../theme/designs.js';
 import { Field, SavedTick } from './ui.jsx';
-import { markUrl } from '../components/Logo.jsx';
+import { LOGO_SRC } from '../components/Logo.jsx';
 import { CARD_FIELDS, CARD_DEFAULTS } from '../components/ProductCard.jsx';
 import { HERO_STYLES } from '../components/HeroCarousel.jsx';
 
 /* One colourway. The strip shows the tokens that actually change what the
    storefront looks like, so the choice can be made without opening the site. */
 function Swatch({ p, live, current, preview, publish, saving }) {
-  const [bg, surface, ink, accent] = p.swatch;
+  const [bg, surface, ink, accent, brand] = p.swatch;
   const isLive = live === p.id;
   const isPreviewing = current === p.id && !isLive;
+  const isDefault = p.id === DEFAULT_PALETTE;
 
   return (
     <article
@@ -30,7 +31,10 @@ function Swatch({ p, live, current, preview, publish, saving }) {
             <span style={{ color: ink, fontSize: 19, fontFamily: "'Marcellus', Georgia, serif", lineHeight: 1 }}>Sukoon</span>
             <span style={{ color: accent, fontSize: 8, letterSpacing: '0.22em', marginTop: 6 }}>CRYSTAL SOLUTIONS</span>
           </div>
+          {/* Brand first: it is the colour of every button and the header, so
+              it is what the choice mostly changes. */}
           <div className="flex w-24 shrink-0 flex-col">
+            <span className="flex-1" style={{ background: brand }} />
             <span className="flex-1" style={{ background: accent }} />
             <span className="flex-1" style={{ background: ink }} />
             <span className="flex-1" style={{ background: surface }} />
@@ -43,6 +47,9 @@ function Swatch({ p, live, current, preview, publish, saving }) {
           <p className="text-[0.9rem] font-medium">{p.name}</p>
           {isLive && <span className="badge badge-ok shrink-0">Live</span>}
           {isPreviewing && <span className="badge shrink-0 text-accent">Previewing</span>}
+          {isDefault && !isLive && !isPreviewing && (
+            <span className="badge badge-neutral shrink-0">Default</span>
+          )}
         </div>
         <p className="mt-1.5 text-[0.78rem] leading-relaxed text-muted">{p.note}</p>
         <div className="mt-3 flex gap-2">
@@ -114,7 +121,11 @@ export default function Appearance() {
         <div className="max-w-2xl">
           <h2 className="text-xl font-medium">Colour theme</h2>
           <p className="mt-1.5 text-[0.88rem] leading-relaxed text-muted">
-            Eight colourways — five light, three dark.
+            Ten colourways — six light, four dark. <strong className="text-ink">Sukoon
+            Signature</strong> is the default and is built from the logo itself: its disc
+            green <code className="rounded bg-bg2 px-1">#2a513c</code>, its foil
+            gold <code className="rounded bg-bg2 px-1">#d4af16</code> and the ivory it sits
+            on <code className="rounded bg-bg2 px-1">#f5f4f0</code>.
             <strong className="text-ink"> Preview</strong> changes only what you see on this browser,
             so you can try them safely; <strong className="text-ink">Publish</strong> is what changes
             the live site for visitors.
@@ -198,7 +209,7 @@ export default function Appearance() {
             >
               <div className="flex items-start gap-3">
                 <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-bg2">
-                  <img src={form.logo || markUrl(64)} alt="" className="h-full w-full object-contain" />
+                  <img src={form.logo || LOGO_SRC} alt="" className="h-full w-full object-contain" />
                 </div>
                 <div className="flex-1 space-y-2">
                   <input value={form.logo || ''} onChange={set('logo')} className="field" placeholder="Leave blank to use the bundled mark" />
@@ -289,7 +300,7 @@ export default function Appearance() {
                       style={{ borderRadius: 'var(--r-btn)' }}
                     >
                       <span className="flex items-center gap-2">
-                        <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border ${on ? 'border-brand bg-brand text-white' : 'border-line'}`}>
+                        <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border ${on ? 'border-brand bg-brand text-onbrand' : 'border-line'}`}>
                           {on && <Check size={10} strokeWidth={3} />}
                         </span>
                         <span className="text-[0.88rem] font-medium">{h.name}</span>
@@ -326,7 +337,7 @@ export default function Appearance() {
                       style={{ borderRadius: 'var(--r-btn)' }}
                     >
                       <span className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded border ${
-                        on ? 'border-brand bg-brand text-white' : 'border-line'
+                        on ? 'border-brand bg-brand text-onbrand' : 'border-line'
                       }`}>
                         {on && <Check size={10} strokeWidth={3} />}
                       </span>

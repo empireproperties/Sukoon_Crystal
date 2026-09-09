@@ -145,7 +145,7 @@ export default function ReturnDialog({ order, onClose, onDone }) {
                       />
                       <span
                         className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 transition-colors ${
-                          on ? 'border-brand bg-brand text-white' : 'border-line text-transparent'
+                          on ? 'border-brand bg-brand text-onbrand' : 'border-line text-transparent'
                         }`}
                       >
                         <Check size={11} strokeWidth={3.2} />

@@ -46,8 +46,10 @@ export default function WhatsAppButton() {
       rel="noreferrer noopener"
       aria-label="Chat with us on WhatsApp"
       /* Smaller on a phone, where it floats over a two-up product grid and a
-         56px disc was landing squarely on somebody's Add to cart. */
-      className={`fixed bottom-4 right-4 z-[60] grid h-12 w-12 place-items-center rounded-full text-white shadow-[0_6px_24px_-6px_rgba(0,0,0,0.45)] transition-all duration-300 hover:scale-105 sm:bottom-7 sm:right-7 sm:h-14 sm:w-14 ${
+         56px disc was landing squarely on somebody's Add to cart.
+         `.fab-bottom` owns the vertical offset so the disc can lift clear of a
+         page's sticky bottom bar -- see --bottom-bar in index.css. */
+      className={`fab-bottom fixed right-4 z-[60] grid h-12 w-12 place-items-center rounded-full text-white shadow-[0_6px_24px_-6px_rgba(0,0,0,0.45)] transition-all duration-300 hover:scale-105 sm:right-7 sm:h-14 sm:w-14 ${
         shown ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-4 opacity-0'
       }`}
       style={{ background: '#25D366' }}

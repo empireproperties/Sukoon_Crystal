@@ -14,15 +14,49 @@
        lets the router read the path. */
     "not_found_handling": "single-page-application",
 
-    /* These two paths reach the Worker before the asset router; everything
-       else is served straight from the CDN without waking it.
-       Both halves matter. Without this the SPA fallback above would answer
-       /api/products with index.html -- once not_found_handling is
+    /* What reaches the Worker before the asset router. Everything not listed
+       here is served straight from the CDN without waking it.
+
+       The first two are the API proxy, and without them the SPA fallback above
+       would answer /api/products with index.html -- once not_found_handling is
        single-page-application every path matches an asset, so the proxy would
-       never run. And scoping it to these two prefixes rather than `true`
-       keeps page and image requests off the Worker request meter entirely,
-       which is what makes a busy day fit inside the free plan. */
-    "run_worker_first": ["/api/*", "/uploads/*"]
+       never run.
+
+       The rest are the HTML pages, which the Worker rewrites to give a crawler
+       a real <title>, description and JSON-LD instead of an empty <div>. See
+       client/worker.js and server/seo.js.
+
+       Listing page paths rather than `true` is the whole trick for staying on
+       the free plan: JS, CSS, fonts and product photography are the overwhelming
+       majority of requests and none of them are here, so they never touch the
+       Worker meter. HTML document requests -- roughly one per page a person
+       actually reads -- do. */
+    "run_worker_first": [
+      "/api/*",
+      "/uploads/*",
+      "/robots.txt",
+      "/sitemap.xml",
+      "/",
+      "/shop",
+      "/shop/*",
+      "/product/*",
+      "/about",
+      "/contact",
+      "/book",
+      "/calendar",
+      "/birth-chart",
+      "/track",
+      /* Not for ranking -- these two carry `noindex`, and the Worker is the
+         only thing that can say so. Left out, they would serve the shell's
+         default `index, follow`. */
+      "/checkout",
+      "/account",
+      "/privacy-policy",
+      "/terms-of-service",
+      "/shipping-policy",
+      "/return-refund-policy",
+      "/faq"
+    ]
   },
 
   "vars": {

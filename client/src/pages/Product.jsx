@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -145,6 +145,28 @@ export default function Product() {
 
   useEffect(() => { setQty(1); setActiveImg(0); setAdded(false); setTab('details'); setWish(false); }, [slug]);
   useEffect(() => { if (p?.id) remember(p); }, [p, remember]);
+
+  /* The floating WhatsApp disc is fixed to the bottom-right of the viewport, so
+     on a phone it was landing squarely on this page's sticky Add to cart and
+     clipping the label. The bar publishes its own height as --bottom-bar and
+     the disc lifts by exactly that much (see .fab-bottom in index.css).
+
+     Measured rather than hardcoded because the bar grows when a long product
+     name wraps, and a ResizeObserver reports 0 once `lg:hidden` takes the bar
+     out of the layout -- which is precisely when the disc should drop back. */
+  const buyBarRef = useRef(null);
+  useEffect(() => {
+    const el = buyBarRef.current;
+    if (!el) return undefined;
+    const root = document.documentElement;
+    /* offsetHeight, not contentRect: the bar carries 12px of padding a side
+       plus a top border, and the content box alone left the disc 25px short. */
+    const publish = () => root.style.setProperty('--bottom-bar', `${el.offsetHeight}px`);
+    const ro = new ResizeObserver(publish);
+    publish();
+    ro.observe(el);
+    return () => { ro.disconnect(); root.style.removeProperty('--bottom-bar'); };
+  }, [p?.id]);
 
   const off = p && p.mrp > p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0;
   const signs = useMemo(() => ZODIAC.filter((z) => (p?.zodiac || []).includes(z.id)), [p]);
@@ -445,17 +467,37 @@ export default function Product() {
 
         {/* ══════════════════════════════════════════════════════ TABS */}
         <section className="mt-14 border-t border-line pt-8">
-          <div className="no-scrollbar flex gap-1 overflow-x-auto border-b border-line">
+          {/* Chips that wrap on a phone, underlined tabs from `sm` up. These
+              four labels need 529px and a phone gives the strip 350px, so as a
+              scroller it hid "Care & cleansing" and "Shipping & returns" off
+              the right edge -- on a product page that is exactly the copy a
+              buyer is looking for before they commit.
+
+              One strip rather than two, restyled at the breakpoint, because a
+              second copy would duplicate the `layoutId` below and framer-motion
+              would animate the underline between the hidden and visible ones. */}
+          <div className="no-scrollbar flex flex-wrap gap-1.5 pb-3 sm:flex-nowrap sm:gap-1 sm:overflow-x-auto sm:border-b sm:border-line sm:pb-0">
             {TABS.map((t) => (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`relative whitespace-nowrap px-4 py-3 text-[0.87rem] font-medium transition-colors ${
-                  tab === t.id ? 'text-brand' : 'text-muted hover:text-ink'
+                aria-selected={tab === t.id}
+                /* `shrink-0` keeps the `sm` strip a scroller rather than a
+                   pile-up: a flex child shrinks below its own label by default,
+                   so the tabs would otherwise overlap on a narrow tablet. */
+                className={`relative shrink-0 whitespace-nowrap rounded-[var(--r-btn)] border px-3 py-2 text-[0.82rem] font-medium transition-colors sm:rounded-none sm:border-0 sm:px-4 sm:py-3 sm:text-[0.87rem] ${
+                  tab === t.id
+                    ? 'border-brand bg-brand text-onbrand sm:bg-transparent sm:text-brand'
+                    : 'border-line text-muted hover:border-brand hover:text-brand sm:hover:text-ink'
                 }`}
               >
                 {t.label}
-                {tab === t.id && <motion.span layoutId="pdp-tab" className="absolute inset-x-0 -bottom-px h-0.5 bg-brand" />}
+                {/* The sliding underline belongs to the tab rendering only. On
+                    the wrapped chips there is no shared baseline to slide along,
+                    and the active chip is already marked by its fill. */}
+                {tab === t.id && (
+                  <motion.span layoutId="pdp-tab" className="absolute inset-x-0 -bottom-px hidden h-0.5 bg-brand sm:block" />
+                )}
               </button>
             ))}
           </div>
@@ -562,7 +604,7 @@ export default function Product() {
       </div>
 
       {/* ══════════════════════════════════════ STICKY MOBILE BUY BAR */}
-      <div className="sticky bottom-0 z-40 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur-sm lg:hidden">
+      <div ref={buyBarRef} className="sticky bottom-0 z-40 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur-sm lg:hidden">
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
             <p className="truncate text-[0.8rem] font-medium">{p.name}</p>

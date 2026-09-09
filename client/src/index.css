@@ -4,10 +4,11 @@
    SUKOON — two independent axes.
 
    [data-design]   structure: type, corners, spacing rhythm, sidebar, weight
-   [data-palette]  colour only — five per design, three light and two dark
+   [data-palette]  colour only — ten colourways, six light and four dark
 
-   Every component reads tokens, never raw hex, so all twenty combinations
-   render correctly without touching a component.
+   Every component reads tokens, never raw hex, so a colourway swap needs no
+   component change. The default is `sukoon-signature`, taken hex for hex
+   from client/src/assets/logo.jpeg.
    ========================================================================== */
 
 @theme inline {
@@ -21,6 +22,7 @@
   --color-brand-soft: var(--c-brand-soft);
   --color-onbrand: var(--c-onbrand);
   --color-accent: var(--c-accent);
+  --color-gold: var(--c-gold);
   --color-sale: var(--c-sale);
   --color-ok: var(--c-ok);
   --font-display: var(--f-display);
@@ -57,30 +59,49 @@
 }
 
 /* ══════════════════════════════════ COLOURWAYS ══════════════════════════ */
-/* Five light, three dark. Tokens only — no component reads a raw hex, so every
+/* Six light, four dark. Tokens only — no component reads a raw hex, so every
    one of these works everywhere without a code change.
      --c-bg     page ground        --c-brand      buttons, header chrome
      --c-bg2    recessed panels    --c-brand-soft tinted fills
      --c-surface cards             --c-onbrand    text on --c-brand
      --c-line   hairlines          --c-accent     eyebrows, prices, highlights
-     --c-ink    body text          --c-sale/--c-ok status colours            */
+     --c-ink    body text          --c-gold       decorative gold, fills only
+     --c-muted  secondary text     --c-sale/--c-ok status colours
+
+   WHY THERE ARE TWO GOLDS
+   The logo foil is #d4af16. Against an ivory ground that is 1.9:1 — far under
+   the 4.5:1 a body-sized word needs, and it genuinely cannot be read. So the
+   light colourways set --c-accent to a darkened gold of the same 48° hue and
+   keep the true foil in --c-gold for things contrast ratios do not govern:
+   star fills, rules, meter bars, gradient washes. The dark colourways have no
+   such problem, so there both tokens hold the foil hex itself.             */
 
 /* ---------------------------------------------------------------- light -- */
+
+/* The mark, exactly: its disc green, its foil gold, its ivory ground. This is
+   the default — PALETTES[0] in theme/designs.js and DEFAULT_PALETTE in
+   server/theme.js both name it. */
+[data-palette='sukoon-signature'] {
+  --c-bg:#f5f4f0; --c-bg2:#ebe9e1; --c-surface:#ffffff; --c-line:#dcd8cb;
+  --c-ink:#14251c; --c-muted:#5e6b63;
+  --c-brand:#2a513c; --c-brand-soft:#e8eee9; --c-onbrand:#f5f4f0;
+  --c-accent:#8a7015; --c-gold:#d4af16; --c-sale:#9b3327; --c-ok:#2f6b4f;
+}
 
 /* Warm ivory and antique gold. The quietest — photography carries the colour. */
 [data-palette='alabaster-gold'] {
   --c-bg:#f7f5f0; --c-bg2:#efece4; --c-surface:#ffffff; --c-line:#e4dfd4;
   --c-ink:#1c1b18; --c-muted:#726c62;
   --c-brand:#1c1b18; --c-brand-soft:#f1ede3; --c-onbrand:#f7f5f0;
-  --c-accent:#9c7c3c; --c-sale:#9b3a2b; --c-ok:#3f6b4a;
+  --c-accent:#9c7c3c; --c-gold:#c9a961; --c-sale:#9b3a2b; --c-ok:#3f6b4a;
 }
 
-/* The logo's own disc green and gold foil. Closest match to the brand mark. */
+/* A deeper, cooler emerald than the mark. `sukoon-signature` is the exact one. */
 [data-palette='ivory-emerald'] {
   --c-bg:#fbfaf6; --c-bg2:#f0f2ed; --c-surface:#ffffff; --c-line:#e0e4dc;
   --c-ink:#14211b; --c-muted:#63706a;
   --c-brand:#0f3126; --c-brand-soft:#e9efe9; --c-onbrand:#f7f2e6;
-  --c-accent:#a8842c; --c-sale:#9b3327; --c-ok:#2f6b4f;
+  --c-accent:#a8842c; --c-gold:#d4af16; --c-sale:#9b3327; --c-ok:#2f6b4f;
 }
 
 /* Soft blush with a deep ruby. Festive without shouting. */
@@ -88,7 +109,7 @@
   --c-bg:#fdf9f7; --c-bg2:#f8ecec; --c-surface:#ffffff; --c-line:#efdcdd;
   --c-ink:#2a1418; --c-muted:#7d616a;
   --c-brand:#9e1f34; --c-brand-soft:#fbeef0; --c-onbrand:#fff5f4;
-  --c-accent:#a8763f; --c-sale:#b02132; --c-ok:#3f6b4a;
+  --c-accent:#a8763f; --c-gold:#c9944f; --c-sale:#b02132; --c-ok:#3f6b4a;
 }
 
 /* Sand and burnt earth. Flatters the rudraksha and jasper photography. */
@@ -96,7 +117,7 @@
   --c-bg:#fbf6f0; --c-bg2:#f4e9dd; --c-surface:#ffffff; --c-line:#ebddcc;
   --c-ink:#2c1a12; --c-muted:#7d6857;
   --c-brand:#b1552c; --c-brand-soft:#fbeee3; --c-onbrand:#fff6ee;
-  --c-accent:#a07434; --c-sale:#a5391f; --c-ok:#4a6b48;
+  --c-accent:#a07434; --c-gold:#c79a4a; --c-sale:#a5391f; --c-ok:#4a6b48;
 }
 
 /* Cool pearl with a deep plum. The most modern of the light set. */
@@ -104,26 +125,37 @@
   --c-bg:#faf8fb; --c-bg2:#f1edf3; --c-surface:#ffffff; --c-line:#e5dfe9;
   --c-ink:#221726; --c-muted:#6e6474;
   --c-brand:#6b2f5e; --c-brand-soft:#f5eef4; --c-onbrand:#fdf9fc;
-  --c-accent:#9a7440; --c-sale:#a02f45; --c-ok:#3f6b57;
+  --c-accent:#9a7440; --c-gold:#c29a5e; --c-sale:#a02f45; --c-ok:#3f6b57;
 }
 
 /* ----------------------------------------------------------------- dark -- */
+
+/* The same three brand hexes after dark. The page ground IS the disc green,
+   the type is the ivory the disc sits on, and the foil gold does every job
+   the green does in light mode. */
+[data-palette='sukoon-night'] {
+  --c-bg:#2a513c; --c-bg2:#23452f; --c-surface:#315e46; --c-line:#3f7055;
+  --c-ink:#f5f4f0; --c-muted:#aec3b5;
+  --c-brand:#d4af16; --c-brand-soft:#23452f; --c-onbrand:#1b3527;
+  --c-accent:#d4af16; --c-gold:#d4af16; --c-sale:#e8a184; --c-ok:#8ed3a6;
+  color-scheme: dark;
+}
 
 /* Near-black and gold. The strongest frame for bright stones. */
 [data-palette='obsidian-gold'] {
   --c-bg:#0e0e10; --c-bg2:#17171a; --c-surface:#17171a; --c-line:#2a2a30;
   --c-ink:#f0ede6; --c-muted:#9a968d;
   --c-brand:#c9a961; --c-brand-soft:#1e1e22; --c-onbrand:#0e0e10;
-  --c-accent:#c9a961; --c-sale:#d98a70; --c-ok:#7fbf95;
+  --c-accent:#c9a961; --c-gold:#c9a961; --c-sale:#d98a70; --c-ok:#7fbf95;
   color-scheme: dark;
 }
 
-/* The logo green as the whole page, lit by its own gold. */
+/* A darker, colder green than the mark. `sukoon-night` is the exact one. */
 [data-palette='forest-gold'] {
   --c-bg:#0c1f18; --c-bg2:#123027; --c-surface:#123027; --c-line:#1e4437;
   --c-ink:#eaf1ec; --c-muted:#92a89c;
   --c-brand:#d9ae59; --c-brand-soft:#16382d; --c-onbrand:#0c1f18;
-  --c-accent:#d9ae59; --c-sale:#e09a7d; --c-ok:#7fbf95;
+  --c-accent:#d9ae59; --c-gold:#d9ae59; --c-sale:#e09a7d; --c-ok:#7fbf95;
   color-scheme: dark;
 }
 
@@ -132,7 +164,7 @@
   --c-bg:#1a0f13; --c-bg2:#251419; --c-surface:#251419; --c-line:#3a2229;
   --c-ink:#f7ebe9; --c-muted:#a9908f;
   --c-brand:#d08a72; --c-brand-soft:#2d181e; --c-onbrand:#1a0f13;
-  --c-accent:#d08a72; --c-sale:#e0806f; --c-ok:#84bf9c;
+  --c-accent:#d08a72; --c-gold:#d08a72; --c-sale:#e0806f; --c-ok:#84bf9c;
   color-scheme: dark;
 }
 
@@ -371,6 +403,17 @@ select.field option { background: var(--c-surface); color: var(--c-ink); }
 @keyframes marquee { to { transform: translateX(-50%); } }
 .marquee-track { display: flex; width: max-content; animation: marquee 46s linear infinite; }
 .marquee-wrap:hover .marquee-track { animation-play-state: paused; }
+
+/* ═══════════════════════════════ FLOATING BUTTON ════════════════════════ */
+/* The WhatsApp disc is fixed to the bottom-right corner. A page that mounts a
+   sticky bottom bar -- the product page's buy bar -- publishes that bar's
+   measured height as --bottom-bar, and the disc lifts by exactly that much
+   instead of sitting on top of the Add to cart underneath it. Pages without a
+   bar never set the variable, so the fallback keeps the disc where it was. */
+.fab-bottom { bottom: calc(1rem + var(--bottom-bar, 0px)); }
+@media (min-width: 640px) {
+  .fab-bottom { bottom: calc(1.75rem + var(--bottom-bar, 0px)); }
+}
 
 /* ══════════════════════════════════ ADMIN ═══════════════════════════════ */
 .stat-card {

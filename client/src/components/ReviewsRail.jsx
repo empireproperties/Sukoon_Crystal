@@ -30,6 +30,13 @@ function Stars({ n = 5, size = 13 }) {
    homepage would pull megabytes of third-party script before anyone pressed play. */
 function VideoCard({ review, onOpen }) {
   const poster = review.photo || review.thumbnail;
+  /* A clip we host can be its own thumbnail. `preload="metadata"` fetches the
+     header and the first frame, a few kilobytes, not the whole file -- which is
+     what makes this cheaper than it looks and better than the flat brand-soft
+     rectangle a hosted video used to get. A YouTube or Instagram embed cannot
+     do this, so those still fall back to the placeholder. */
+  const selfPoster = !poster && review.video?.kind === 'file' ? review.video.embed : null;
+
   return (
     <button
       onClick={() => onOpen(review)}
@@ -39,6 +46,10 @@ function VideoCard({ review, onOpen }) {
       <div className="aspect-[9/14] w-full bg-bg2">
         {poster ? (
           <img src={poster} alt="" loading="lazy" decoding="async"
+            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+        ) : selfPoster ? (
+          <video src={selfPoster} muted playsInline preload="metadata" tabIndex={-1}
+            aria-hidden="true"
             className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
         ) : (
           <div className="h-full w-full bg-[var(--c-brand-soft)]" />
@@ -52,6 +63,7 @@ function VideoCard({ review, onOpen }) {
       <div className="absolute inset-x-0 bottom-0 p-4" style={{ color: '#fbf9f4' }}>
         <Stars n={review.rating} />
         <p className="mt-1.5 text-[0.86rem] font-medium">{review.name}</p>
+        {review.designation && <p className="text-[0.74rem] opacity-75">{review.designation}</p>}
         {review.title && <p className="mt-0.5 line-clamp-2 text-[0.78rem] opacity-80">{review.title}</p>}
       </div>
     </button>
@@ -78,7 +90,7 @@ function TextCard({ review }) {
         )}
         <div>
           <p className="text-[0.84rem] font-medium">{review.name}</p>
-          <p className="text-[0.72rem] text-muted">Verified buyer</p>
+          {review.designation && <p className="text-[0.72rem] text-muted">{review.designation}</p>}
         </div>
       </div>
     </figure>
@@ -115,7 +127,9 @@ function Lightbox({ review, onClose }) {
           )}
         </div>
         {review.body && <p className="mt-4 text-center text-[0.88rem] leading-relaxed text-white/85">“{review.body}”</p>}
-        <p className="mt-2 text-center text-[0.8rem] text-white/60">{review.name}</p>
+        <p className="mt-2 text-center text-[0.8rem] text-white/60">
+          {review.name}{review.designation ? ` · ${review.designation}` : ''}
+        </p>
       </div>
     </div>
   );
@@ -140,7 +154,7 @@ export default function ReviewsRail({ reviews = [] }) {
         <div>
           <p className="text-[0.68rem] uppercase tracking-[0.24em] text-muted">In their words</p>
           <h2 className="mt-2 font-[var(--font-display)] text-[clamp(1.6rem,4vw,2.5rem)] leading-tight">
-            What people tell us
+            Hear from our customers
           </h2>
           {isPlaceholder && (
             <p className="mt-2 text-[0.78rem] text-muted">
@@ -167,8 +181,10 @@ export default function ReviewsRail({ reviews = [] }) {
       <div
         ref={scroller}
         className="hide-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2"
-        style={{ paddingInline: 'max(1.25rem, calc((100vw - var(--wrap)) / 2))', scrollPaddingInline: 'max(1.25rem, calc((100vw - var(--wrap)) / 2))' }}
-        style={{ scrollbarWidth: 'none' }}
+        style={{
+          paddingInline: 'max(1.25rem, calc((100vw - var(--wrap)) / 2))',
+          scrollPaddingInline: 'max(1.25rem, calc((100vw - var(--wrap)) / 2))',
+        }}
       >
         {list.map((r, i) => (
           <motion.div

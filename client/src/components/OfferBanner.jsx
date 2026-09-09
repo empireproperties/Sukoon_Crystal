@@ -14,9 +14,11 @@ const STATIC = {
   message: 'Cleansed in salt and charged with mantra at our Meerut studio — which is why we never dispatch the same day.',
   cta: 'See how we work',
   link: '/about',
-  /* Follows the live theme. 'ink' gives a deep neutral band that carries the
-     gold CTA without introducing a second brand colour to the page. */
-  palette: 'ink',
+  /* The theme's own brand colour. This band is the largest block of solid
+     colour on the homepage, so the espresso neutral it used to be read as a
+     second brand colour sitting next to the real one -- and a fixed green would
+     disappear on the green colourways. */
+  palette: 'brand',
 };
 
 const paletteOf = (id) => BANNER_PALETTES[id] || BANNER_PALETTES.auto;
