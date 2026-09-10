@@ -457,7 +457,7 @@ export default function Product() {
                 <Phone size={17} strokeWidth={1.6} className="shrink-0 text-accent" />
                 <span className="min-w-0 flex-1">
                   <span className="block text-[0.86rem] font-medium">Not sure this is the right stone?</span>
-                  <span className="block text-[0.79rem] text-muted">Book a free 15-minute call with Swati first.</span>
+                  <span className="block text-[0.79rem] text-muted">Book a call with Swati before you buy.</span>
                 </span>
                 <ChevronRight size={16} className="shrink-0 text-muted" />
               </Link>
@@ -565,7 +565,7 @@ export default function Product() {
             <div>
               {FAQ.map((f) => <FaqItem key={f.q} {...f} />)}
               <p className="mt-5 text-[0.86rem] text-muted">
-                Still unsure? <Link to="/book" className="text-brand link-underline">Book a free call</Link> or{' '}
+                Still unsure? <Link to="/book" className="text-brand link-underline">Book a call</Link> or{' '}
                 <Link to="/contact" className="text-brand link-underline">send us a message</Link>.
               </p>
             </div>

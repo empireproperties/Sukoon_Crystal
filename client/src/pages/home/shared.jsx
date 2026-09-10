@@ -223,7 +223,7 @@ export function ConsultBand({ tone = 'soft' }) {
     <section className={onBrand ? 'bg-brand text-onbrand' : 'border-y border-line bg-bg2'}>
       <div className="wrap sec-sm grid items-center gap-8 lg:grid-cols-[1.3fr_1fr]">
         <div>
-          <p className={`eyebrow ${onBrand ? '!text-onbrand opacity-70' : ''}`}>Free 15-minute consultation</p>
+          <p className={`eyebrow ${onBrand ? '!text-onbrand opacity-70' : ''}`}>Talk to Swati first</p>
           <h2 className="h-sec mt-2.5 max-w-xl balance">Not sure which stone is yours? Ask before you buy.</h2>
           <p className={`mt-4 max-w-lg text-[0.92rem] leading-relaxed ${onBrand ? 'opacity-80' : 'text-muted'}`}>
             Swati Khanna reads your birth details, listens to what is actually going on, and tells you

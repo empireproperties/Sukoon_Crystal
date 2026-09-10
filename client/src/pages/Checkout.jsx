@@ -255,7 +255,7 @@ export default function Checkout() {
       <div className="grid min-h-[55vh] place-items-center px-5 text-center">
         <div className="w-full max-w-sm">
           <h1 className="text-3xl">Your cart is empty</h1>
-          <p className="mt-2 text-[0.9rem] text-muted">Add a piece first, or book a free call and let Swati choose.</p>
+          <p className="mt-2 text-[0.9rem] text-muted">Add a piece first, or book a call and let Swati choose.</p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link to="/shop" className="btn btn-primary">Shop all crystals</Link>
             <Link to="/book" className="btn btn-outline">Book a call</Link>

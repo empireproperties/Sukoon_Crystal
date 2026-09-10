@@ -87,7 +87,7 @@ export default function Contact() {
               {sent ? 'Message sent' : <>Send message <Send size={14} strokeWidth={1.9} /></>}
             </button>
             <p className="mt-4 text-[0.8rem] text-muted">
-              Prefer to speak? <Link to="/book" className="text-brand underline underline-offset-2">Book a free call</Link> instead.
+              Prefer to speak? <Link to="/book" className="text-brand underline underline-offset-2">Book a call</Link> instead.
             </p>
           </form>
 

@@ -143,7 +143,7 @@ function MobileMenu({ open, onClose }) {
             </nav>
             <div className="space-y-2 border-t border-line p-4">
               <Link to="/book" onClick={onClose} className="btn btn-primary w-full">
-                <Phone size={14} strokeWidth={1.9} /> Book a free consultation
+                <Phone size={14} strokeWidth={1.9} /> Book a consultation
               </Link>
               <a href={`tel:${(settings?.phone || '+919012257555').replace(/\s/g, '')}`} className="btn btn-outline w-full">
                 {settings?.phone || '+91 90122 57555'}

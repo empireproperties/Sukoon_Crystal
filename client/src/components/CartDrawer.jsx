@@ -75,7 +75,7 @@ export default function CartDrawer() {
                   <ShoppingBag size={34} strokeWidth={1.2} className="text-muted" />
                   <p className="mt-4 text-lg font-medium">Your cart is empty</p>
                   <p className="mt-1.5 text-[0.86rem] text-muted">
-                    Browse the collections, or book a free call and let Swati choose for you.
+                    Browse the collections, or book a call and let Swati choose for you.
                   </p>
                   <Link to="/shop" onClick={() => setDrawerOpen(false)} className="btn btn-primary mt-6">
                     Shop all crystals

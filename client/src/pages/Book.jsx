@@ -146,7 +146,7 @@ export default function Book() {
             </h1>
             <p className="mt-4 max-w-lg text-[0.94rem] leading-relaxed text-muted">
               You speak to the certified astrologer whose name is on the door, not a call centre.
-              The first fifteen minutes are free, because she would rather you were sure.
+              She would rather you were sure about a stone than sell you the wrong one.
             </p>
             <ul className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-[0.82rem] text-muted">
               {['Completely confidential', 'Reschedule up to 4 hours before', 'Payment collected on the call'].map((t) => (
