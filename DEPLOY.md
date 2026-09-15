@@ -117,6 +117,14 @@ Variables and Secrets → Add variable**:
 
 Save and **redeploy** — variables only take effect on the next deployment.
 
+**`API_ORIGIN` is now set in `client/wrangler.jsonc`** (currently
+`https://sukoon-crystal.onrender.com`), and that file wins: `wrangler deploy`
+uploads its `vars` on every deploy, over whatever the dashboard says. That is
+why an empty value there used to blank the shop on every push. If the API
+moves, change it in that file and push — editing it only in the dashboard will
+be undone by the next deploy. `"keep_vars": true` stops a deploy from deleting
+any other variable added in the dashboard.
+
 Then check: open the Worker's URL. Products should load. If you see
 `{"error":"API_ORIGIN is not configured on this Worker."}` on any `/api/` call,
 the variable did not save or the Worker was not redeployed.

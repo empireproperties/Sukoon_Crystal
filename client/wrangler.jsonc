@@ -60,12 +60,18 @@
   },
 
   "vars": {
-    /* Where the Express API lives, e.g. "https://sukoon-api.up.railway.app".
-       Left empty here on purpose -- set the real value in the Cloudflare
-       dashboard under Settings > Variables, so the address of the backend is
-       not baked into the repository and can change without a redeploy. */
-    "API_ORIGIN": ""
+    /* Where the Express API lives. Kept here rather than only in the dashboard
+       because `wrangler deploy` uploads this block on every deploy and it wins:
+       when this was an empty string, each push blanked the dashboard value and
+       the shop went empty. Change the address here, and nowhere else. No
+       trailing slash. */
+    "API_ORIGIN": "https://sukoon-crystal.onrender.com"
   },
+
+  /* Without this, a deploy also deletes any dashboard variable this file does
+     not mention -- so anything added there later would vanish on the next
+     push the same way. */
+  "keep_vars": true,
 
   "observability": {
     "enabled": true
