@@ -115,7 +115,12 @@ function Card({ product, config }) {
         {/* Square, not 4:5. A portrait crop on a 320px-wide card is 400px of
             photo before a single word of copy, which is what made the tile run
             past the fold on a desktop grid. */}
-        <ProductImage product={product} className="aspect-square" zoom hoverSrc={armed ? second : ''} />
+        {/* `object-top`: the photos are taller than this square, and a centred
+            crop sliced the Sukoon medallion off the top-left corner. Anchoring
+            to the top keeps it whole and trims the bottom instead.
+            `origin-top-left` so the hover zoom grows away from the medallion
+            rather than pushing it back out of frame. */}
+        <ProductImage product={product} className="aspect-square" imgClassName="object-top origin-top-left" zoom hoverSrc={armed ? second : ''} />
 
         {config.bestseller && product.bestseller && (
           <span className="pointer-events-none absolute right-2 top-2 rounded-full bg-accent px-2 py-0.5 text-[0.6rem] font-medium text-onbrand sm:right-2.5 sm:top-2.5 sm:px-2.5 sm:py-1 sm:text-[0.66rem]">
