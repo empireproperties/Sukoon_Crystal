@@ -3,6 +3,7 @@ import { Routes, Route, useLocation, Outlet } from 'react-router-dom';
 
 import { ShopProvider, useVisitTracker } from './lib/store.jsx';
 import { useSeo } from './lib/seo.jsx';
+import { initPixel, pageView } from './lib/pixel.js';
 import { AccountProvider } from './lib/account.jsx';
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
@@ -46,6 +47,8 @@ function StoreLayout() {
   useSeo();
 
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  /* Storefront only, for the same reason as the visit tracker. */
+  useEffect(() => { initPixel(); pageView(); }, [pathname]);
 
   /* `shell` carries the Studio sidebar offset; --sidebar is 0 elsewhere. */
   return (

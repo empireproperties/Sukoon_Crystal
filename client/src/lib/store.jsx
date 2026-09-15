@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, useState, useCallback } from 'react';
 import { api } from './api.js';
+import { trackAddToCart } from './pixel.js';
 import { normalise } from '../theme/designs.js';
 
 /* ------------------------------------------------------------------ cart */
@@ -102,7 +103,7 @@ export function ShopProvider({ children }) {
     return {
       cart, count, subtotal,
       shipping: subtotal === 0 ? 0 : subtotal >= 999 ? 0 : 60,
-      addToCart: (product, qty) => { dispatch({ type: 'add', product, qty }); setDrawerOpen(true); },
+      addToCart: (product, qty) => { dispatch({ type: 'add', product, qty }); setDrawerOpen(true); trackAddToCart(product, qty || 1); },
       setQty: (id, qty) => dispatch({ type: 'qty', id, qty }),
       removeFromCart: (id) => dispatch({ type: 'remove', id }),
       clearCart: () => dispatch({ type: 'clear' }),

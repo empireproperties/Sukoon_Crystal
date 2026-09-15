@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  AreaChart, Area, LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+  AreaChart, Area, BarChart, Bar, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import {
-  Eye, ShoppingCart, IndianRupee, Package, Truck, CheckCircle2, Clock,
+  ShoppingCart, IndianRupee, Package, Truck, CheckCircle2, Clock,
   PhoneCall, AlertTriangle, ChevronRight, Boxes,
 } from 'lucide-react';
 
@@ -46,29 +46,25 @@ function ChartTip({ active, payload, label, formatter }) {
 
 const axis = { fontSize: 11, fill: 'var(--c-muted)' };
 
+/* No visitor figures here: the in-house visit counts were wrong, so traffic
+   is read from the Meta Pixel instead. Everything on this page comes from
+   orders, bookings and stock, which the database records exactly. */
 export default function Dashboard() {
   const [days, setDays] = useState(30);
   const { data, loading } = useAsync(() => api.analytics(days), [days]);
 
   if (loading || !data) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 [&>*]:min-w-0">
-        {Array.from({ length: 8 }, (_, i) => <div key={i} className="skeleton h-32" style={{ borderRadius: 'var(--r-card)' }} />)}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 [&>*]:min-w-0">
+        {Array.from({ length: 6 }, (_, i) => <div key={i} className="skeleton h-32" style={{ borderRadius: 'var(--r-card)' }} />)}
       </div>
     );
   }
 
   const {
-    kpis, series, fulfilment, sources, devices, topPages, topProducts,
+    kpis, series, fulfilment, topProducts,
     categoryRevenue, today, lowStock, recentOrders, upcomingBookings,
   } = data;
-
-  const funnel = [
-    { name: 'Visitors', value: kpis.visitors.value, colour: '#4b5296' },
-    { name: 'Orders placed', value: kpis.orders.value, colour: '#b0803a' },
-    { name: 'In transit', value: fulfilment.in_transit, colour: '#c47a35' },
-    { name: 'Delivered', value: fulfilment.delivered, colour: '#4a8a5f' },
-  ];
 
   return (
     <div className="space-y-6">
@@ -76,7 +72,6 @@ export default function Dashboard() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
           {[
-            ['Visits today', today.visits.toLocaleString('en-IN')],
             ['Orders today', today.orders],
             ['Revenue today', inr(today.revenue)],
           ].map(([k, v]) => (
@@ -102,11 +97,10 @@ export default function Dashboard() {
       </div>
 
       {/* ------------------------------------------------------------ KPIs */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 [&>*]:min-w-0">
-        <StatCard index={0} icon={Eye} label="Site visits" value={kpis.visits.value.toLocaleString('en-IN')} delta={kpis.visits.delta} hint={`${kpis.visitors.value.toLocaleString('en-IN')} unique visitors`} />
-        <StatCard index={1} icon={IndianRupee} label="Revenue" value={inr(kpis.revenue.value)} delta={kpis.revenue.delta} hint={`Average order ${inr(kpis.aov.value)}`} />
-        <StatCard index={2} icon={ShoppingCart} label="Orders" value={kpis.orders.value} delta={kpis.orders.delta} hint={`${kpis.conversion.value}% conversion`} />
-        <StatCard index={3} icon={PhoneCall} label="Consultations booked" value={kpis.bookings.value} delta={kpis.bookings.delta} hint={`${upcomingBookings.length} upcoming`} />
+      <div className="grid gap-4 sm:grid-cols-3 [&>*]:min-w-0">
+        <StatCard index={0} icon={IndianRupee} label="Revenue" value={inr(kpis.revenue.value)} delta={kpis.revenue.delta} hint={`Average order ${inr(kpis.aov.value)}`} />
+        <StatCard index={1} icon={ShoppingCart} label="Orders" value={kpis.orders.value} delta={kpis.orders.delta} hint={`Last ${days} days`} />
+        <StatCard index={2} icon={PhoneCall} label="Consultations booked" value={kpis.bookings.value} delta={kpis.bookings.delta} hint={`${upcomingBookings.length} upcoming`} />
       </div>
 
       {/* --------------------------------------------------- fulfilment row */}
@@ -159,78 +153,9 @@ export default function Dashboard() {
         </section>
 
         <section className="border border-line bg-surface p-5" style={{ borderRadius: 'var(--r-card)' }}>
-          <h2 className="text-[0.98rem] font-medium">Traffic sources</h2>
-          <p className="text-[0.74rem] text-muted">Where visitors come from</p>
-          <ResponsiveContainer width="100%" height={180}>
-            <PieChart>
-              <Pie data={sources} dataKey="value" nameKey="name" innerRadius={46} outerRadius={72} paddingAngle={2} stroke="none">
-                {sources.map((_, i) => <Cell key={i} fill={SERIES_COLOURS[i % SERIES_COLOURS.length]} />)}
-              </Pie>
-              <Tooltip content={<ChartTip />} />
-            </PieChart>
-          </ResponsiveContainer>
-          <ul className="mt-3 space-y-2">
-            {sources.slice(0, 5).map((s, i) => (
-              <li key={s.name} className="flex items-center gap-2.5 text-[0.8rem]">
-                <span className="h-2 w-2 rounded-full" style={{ background: SERIES_COLOURS[i % SERIES_COLOURS.length] }} />
-                <span className="text-muted">{s.name}</span>
-                <span className="ml-auto tnum">{s.value.toLocaleString('en-IN')}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-3 [&>*]:min-w-0">
-        <section className="border border-line bg-surface p-5 lg:col-span-2" style={{ borderRadius: 'var(--r-card)' }}>
-          <h2 className="text-[0.98rem] font-medium">Visitors</h2>
-          <p className="mb-4 text-[0.74rem] text-muted">Page views against unique sessions</p>
-          <ResponsiveContainer width="100%" height={210}>
-            <LineChart data={series} margin={{ top: 5, right: 5, left: -16, bottom: 0 }}>
-              <CartesianGrid stroke="var(--c-line)" vertical={false} />
-              <XAxis dataKey="label" tick={axis} axisLine={false} tickLine={false} interval={Math.max(0, Math.floor(series.length / 7))} />
-              <YAxis tick={axis} axisLine={false} tickLine={false} />
-              <Tooltip content={<ChartTip />} />
-              <Line type="monotone" dataKey="visits" name="Page views" stroke="#4b5296" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="visitors" name="Visitors" stroke="#b0803a" strokeWidth={2} dot={false} strokeDasharray="4 3" />
-            </LineChart>
-          </ResponsiveContainer>
-        </section>
-
-        <section className="border border-line bg-surface p-5" style={{ borderRadius: 'var(--r-card)' }}>
-          <h2 className="text-[0.98rem] font-medium">Visit to delivery</h2>
-          <p className="mb-5 text-[0.74rem] text-muted">Where people drop off</p>
-          <ul className="space-y-4">
-            {funnel.map((f, i) => {
-              const pct = funnel[0].value ? (f.value / funnel[0].value) * 100 : 0;
-              return (
-                <li key={f.name}>
-                  <div className="flex items-baseline justify-between text-[0.8rem]">
-                    <span className="text-muted">{f.name}</span>
-                    <span className="font-semibold tnum" style={{ color: f.colour }}>{f.value.toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-bg2">
-                    <motion.div
-                      className="h-full rounded-full"
-                      style={{ background: f.colour }}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.max(pct, 1.5)}%` }}
-                      transition={{ duration: 0.6, delay: i * 0.1 }}
-                    />
-                  </div>
-                  <p className="mt-1 text-[0.7rem] text-muted">{pct.toFixed(pct < 10 ? 2 : 1)}% of visitors</p>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-3 [&>*]:min-w-0">
-        <section className="border border-line bg-surface p-5" style={{ borderRadius: 'var(--r-card)' }}>
           <h2 className="text-[0.98rem] font-medium">Revenue by collection</h2>
           <p className="mb-3 text-[0.74rem] text-muted">Last {days} days</p>
-          <ResponsiveContainer width="100%" height={210}>
+          <ResponsiveContainer width="100%" height={260}>
             <BarChart data={categoryRevenue} layout="vertical" margin={{ left: 0, right: 10 }}>
               <XAxis type="number" hide />
               <YAxis type="category" dataKey="name" width={112} tick={axis} axisLine={false} tickLine={false} />
@@ -240,62 +165,6 @@ export default function Dashboard() {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        </section>
-
-        <section className="border border-line bg-surface p-5" style={{ borderRadius: 'var(--r-card)' }}>
-          <h2 className="text-[0.98rem] font-medium">Best sellers</h2>
-          <p className="mb-4 text-[0.74rem] text-muted">By revenue</p>
-          <ul className="space-y-3">
-            {topProducts.map((p, i) => (
-              <li key={p.name} className="flex items-center gap-3">
-                <span className="w-3 shrink-0 text-[0.8rem] text-muted tnum">{i + 1}</span>
-                <ProductImage product={{ name: p.name, image: p.image }} className="h-10 w-10 shrink-0" imgClassName="rounded-[var(--r-btn)]" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[0.8rem]">{p.name}</p>
-                  <p className="text-[0.7rem] text-muted">{p.units} sold</p>
-                </div>
-                <span className="shrink-0 text-[0.8rem] font-medium tnum">{inr(p.revenue)}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="border border-line bg-surface p-5" style={{ borderRadius: 'var(--r-card)' }}>
-          <h2 className="text-[0.98rem] font-medium">Most visited pages</h2>
-          <ul className="mt-4 space-y-3">
-            {topPages.map((p) => (
-              <li key={p.name}>
-                <div className="flex items-baseline justify-between gap-3 text-[0.8rem]">
-                  <span className="truncate text-muted">{p.name}</span>
-                  <span className="shrink-0 tnum">{p.value.toLocaleString('en-IN')}</span>
-                </div>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-bg2">
-                  <motion.div
-                    className="h-full rounded-full bg-brand"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(p.value / topPages[0].value) * 100}%` }}
-                    transition={{ duration: 0.5 }}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-5 border-t border-line pt-4">
-            <p className="mb-2.5 text-[0.74rem] text-muted">Devices</p>
-            <div className="flex gap-2">
-              {devices.map((d, i) => {
-                const total = devices.reduce((t, x) => t + x.value, 0);
-                return (
-                  <div key={d.name} className="flex-1 rounded-[var(--r-btn)] border border-line p-2.5 text-center">
-                    <span className="block text-[0.95rem] font-semibold" style={{ color: SERIES_COLOURS[i] }}>
-                      {Math.round((d.value / total) * 100)}%
-                    </span>
-                    <span className="block text-[0.68rem] capitalize text-muted">{d.name}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         </section>
       </div>
 
@@ -334,6 +203,25 @@ export default function Dashboard() {
         </section>
 
         <div className="space-y-4">
+          <section className="border border-line bg-surface p-5" style={{ borderRadius: 'var(--r-card)' }}>
+            <h2 className="text-[0.98rem] font-medium">Best sellers</h2>
+            <p className="mb-4 text-[0.74rem] text-muted">By revenue</p>
+            <ul className="space-y-3">
+              {topProducts.map((p, i) => (
+                <li key={p.name} className="flex items-center gap-3">
+                  <span className="w-3 shrink-0 text-[0.8rem] text-muted tnum">{i + 1}</span>
+                  <ProductImage product={{ name: p.name, image: p.image }} className="h-10 w-10 shrink-0" imgClassName="rounded-[var(--r-btn)]" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[0.8rem]">{p.name}</p>
+                    <p className="text-[0.7rem] text-muted">{p.units} sold</p>
+                  </div>
+                  <span className="shrink-0 text-[0.8rem] font-medium tnum">{inr(p.revenue)}</span>
+                </li>
+              ))}
+              {!topProducts.length && <li className="text-[0.8rem] text-muted">No sales in this period.</li>}
+            </ul>
+          </section>
+
           <section className="border border-line bg-surface" style={{ borderRadius: 'var(--r-card)' }}>
             <div className="flex items-center justify-between border-b border-line px-5 py-4">
               <h2 className="text-[0.98rem] font-medium">Next consultations</h2>

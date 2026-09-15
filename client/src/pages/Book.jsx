@@ -8,6 +8,7 @@ import {
 import { api, inr, dateLabel } from '../lib/api.js';
 import { useAsync, useShop } from '../lib/store.jsx';
 import { CountUp } from '../components/Motion.jsx';
+import { trackBooking } from '../lib/pixel.js';
 
 
 const CONCERNS = [
@@ -63,7 +64,9 @@ export default function Book() {
   const submit = async () => {
     setSaving(true);
     try {
-      setConfirmed(await api.book({ ...form, serviceId: service.id, date, slot }));
+      const booking = await api.book({ ...form, serviceId: service.id, date, slot });
+      trackBooking(service, booking);
+      setConfirmed(booking);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       toast(err.message, 'error');

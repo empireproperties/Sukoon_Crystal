@@ -107,6 +107,12 @@ function OrderRow({ order, open, onToggle, onReturn, returnable }) {
                 )}
                 <div className="flex justify-between"><dt className="text-muted">Shipping</dt><dd className="tnum">{order.shipping ? inr(order.shipping) : 'Free'}</dd></div>
                 <div className="flex justify-between pt-1 font-medium"><dt>Total</dt><dd className="tnum">{inr(order.total)}</dd></div>
+                {order.payment === 'COD' && order.amountPaid > 0 && (
+                  <>
+                    <div className="flex justify-between text-ok"><dt>Paid in advance</dt><dd className="tnum">{inr(order.amountPaid)}</dd></div>
+                    <div className="flex justify-between font-medium"><dt>Due on delivery</dt><dd className="tnum">{inr(order.balanceDue)}</dd></div>
+                  </>
+                )}
               </dl>
 
               {order.customer?.address && (

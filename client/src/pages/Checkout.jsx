@@ -8,6 +8,7 @@ import { useShop } from '../lib/store.jsx';
 import { useAccount } from '../lib/account.jsx';
 import ProductImage from '../components/ProductImage.jsx';
 import AddressFields from '../components/AddressFields.jsx';
+import { trackInitiateCheckout, trackPurchase } from '../lib/pixel.js';
 
 const RZP_SCRIPT = 'https://checkout.razorpay.com/v1/checkout.js';
 
@@ -41,11 +42,16 @@ export default function Checkout() {
   const [placing, setPlacing] = useState(false);
   const [order, setOrder] = useState(null);
   const [online, setOnline] = useState(false);
+  /* Replaced by the server's figures on load; these match them. */
+  const [codRules, setCodRules] = useState({ advance: 200, min: 500 });
   const [editDetails, setEditDetails] = useState(false);
 
   /* Whether the server has Razorpay keys decides if "Pay online" is real. */
   useEffect(() => {
-    api.paymentConfig().then((c) => setOnline(Boolean(c.razorpay))).catch(() => setOnline(false));
+    api.paymentConfig().then((c) => {
+      setOnline(Boolean(c.razorpay));
+      if (c.codAdvance) setCodRules({ advance: c.codAdvance, min: c.codMinOrder || 0 });
+    }).catch(() => setOnline(false));
   }, []);
 
   /* Fill from the signed-in profile so a returning shopper is not asked for
@@ -69,6 +75,16 @@ export default function Checkout() {
   const discount = applied?.discount || 0;
   const total = subtotal + shipping - discount;
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  /* COD means an advance paid online now and the rest to the courier. Without
+     Razorpay there is nothing to take the advance with, so COD is plain cash. */
+  const codAllowed = total >= codRules.min;
+  const advance = payment === 'COD' && online ? Math.min(codRules.advance, total) : 0;
+
+  /* A coupon or a removed item can take the basket under the COD minimum. */
+  useEffect(() => {
+    if (payment === 'COD' && !codAllowed) setPayment('Prepaid');
+  }, [payment, codAllowed]);
 
   /* The server prices the code against this exact cart, so what is shown here
      is what will actually be charged. */
@@ -95,7 +111,13 @@ export default function Checkout() {
 
   const lines = () => cart.map((l) => ({ productId: l.productId, slug: l.slug, qty: l.qty }));
 
+  /* Once per visit to the page, and only with something in the cart. */
+  useEffect(() => {
+    if (cart.length) trackInitiateCheckout(cart, subtotal + shipping);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const settle = (created) => {
+    trackPurchase(created);
     setOrder(created);
     clearCart();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -108,7 +130,7 @@ export default function Checkout() {
     const ready = await loadRazorpay();
     if (!ready) throw new Error('Could not reach the payment gateway. Check your connection and try again.');
 
-    const intent = await api.createPayment({ items: lines(), customer: form, couponCode: applied?.code || '' });
+    const intent = await api.createPayment({ items: lines(), customer: form, payment, couponCode: applied?.code || '' });
 
     await new Promise((resolve, reject) => {
       /* Razorpay closes its modal the instant a payment succeeds, which fires
@@ -126,7 +148,9 @@ export default function Checkout() {
         amount: intent.amount,
         currency: intent.currency,
         name: 'Sukoon Crystal Solutions',
-        description: `${cart.length} item${cart.length > 1 ? 's' : ''}`,
+        description: payment === 'COD'
+          ? 'Advance for cash on delivery'
+          : `${cart.length} item${cart.length > 1 ? 's' : ''}`,
         prefill: { name: form.name, email: form.email, contact: form.phone },
         notes: { address: form.address, city: form.city },
         theme: { color: '#4b5296' },
@@ -166,7 +190,9 @@ export default function Checkout() {
     if (!cart.length) return;
     setPlacing(true);
     try {
-      if (payment === 'Prepaid' && online) {
+      /* With Razorpay live both methods pay online: the full total, or the COD
+         advance. The server refuses a COD order that skips it. */
+      if (online) {
         await payOnline();
       } else {
         settle(await api.placeOrder({ items: lines(), customer: form, payment, couponCode: applied?.code || '' }));
@@ -211,7 +237,9 @@ export default function Checkout() {
             <dl className="grid gap-4 p-5 sm:grid-cols-2">
               {[
                 ['Order total', inr(order.total)],
-                ['Payment method', order.payment],
+                ['Payment method', order.payment === 'COD' && order.balanceDue > 0
+                  ? `Cash on delivery — ${inr(order.amountPaid)} paid, ${inr(order.balanceDue)} due on delivery`
+                  : order.payment],
                 ['Courier', order.courier],
                 ['Tracking number', order.awb],
                 ['Delivering to', `${order.customer.city}, ${order.customer.state} ${order.customer.pincode}`],
@@ -337,13 +365,22 @@ export default function Checkout() {
             <div className="mt-5 space-y-3">
               {[
                 { id: 'Prepaid', title: 'Pay online', sub: online ? 'UPI, credit or debit card, net banking — secured by Razorpay' : 'Currently unavailable' },
-                { id: 'COD', title: 'Cash on delivery', sub: 'Available on orders above ₹500' },
+                {
+                  id: 'COD',
+                  title: 'Cash on delivery',
+                  disabled: !codAllowed,
+                  sub: !codAllowed
+                    ? `Available on orders of ${inr(codRules.min)} or more`
+                    : online
+                      ? `Pay ${inr(Math.min(codRules.advance, total))} now online, the rest in cash when it arrives`
+                      : 'Pay in cash when your order arrives',
+                },
               ].map((m) => (
                 <label
                   key={m.id}
                   className={`flex cursor-pointer items-start gap-3.5 border p-4 transition-colors ${
                     payment === m.id ? 'border-brand bg-brand-soft' : 'border-line hover:border-muted'
-                  }`}
+                  } ${m.disabled ? 'pointer-events-none opacity-50' : ''}`}
                   style={{ borderRadius: 'var(--r-card)' }}
                 >
                   <input
@@ -351,6 +388,7 @@ export default function Checkout() {
                     name="payment"
                     checked={payment === m.id}
                     onChange={() => setPayment(m.id)}
+                    disabled={m.disabled}
                     className="sr-only"
                   />
                   <span className={`mt-0.5 grid h-4.5 w-4.5 shrink-0 place-items-center rounded-full border ${
@@ -434,10 +472,18 @@ export default function Checkout() {
                   <div className="flex justify-between border-t border-line pt-3 text-[1.05rem] font-semibold">
                     <dt>Total</dt><dd className="tnum">{inr(total)}</dd>
                   </div>
+                  {advance > 0 && (
+                    <>
+                      <div className="flex justify-between"><dt className="text-muted">Pay now (advance)</dt><dd className="tnum">{inr(advance)}</dd></div>
+                      <div className="flex justify-between"><dt className="text-muted">Pay on delivery</dt><dd className="tnum">{inr(total - advance)}</dd></div>
+                    </>
+                  )}
                 </dl>
 
                 <button type="submit" disabled={placing} className="btn btn-primary btn-lg mt-5 w-full">
-                  {placing ? 'Placing your order…' : `Place order · ${inr(total)}`}
+                  {placing
+                    ? 'Placing your order…'
+                    : advance > 0 ? `Pay ${inr(advance)} advance & place order` : `Place order · ${inr(total)}`}
                 </button>
 
                 <ul className="mt-4 space-y-2 text-[0.76rem] text-muted">

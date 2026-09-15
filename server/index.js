@@ -582,6 +582,7 @@ app.get('/api/orders/track/:number', (req, res) => {
   res.json({
     number: o.number, status: o.status, createdAt: o.createdAt, timeline: o.timeline,
     courier: o.courier, awb: o.awb, items: o.items, total: o.total,
+    payment: o.payment, amountPaid: o.amountPaid, balanceDue: o.balanceDue,
     customer: { name: o.customer.name, city: o.customer.city, state: o.customer.state },
   });
 });
@@ -794,10 +795,16 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
   const { items = [], customer = {}, payment = 'Prepaid', couponCode = '' } = req.body || {};
   if (!items.length) return res.status(400).json({ error: 'Your cart is empty.' });
 
-  /* With Razorpay live, an online order may only be created by the verified
-     payment route -- otherwise this endpoint would mint paid orders for free. */
-  if (payment !== 'COD' && razorpayReady()) {
-    return res.status(400).json({ error: 'Online payments must go through the payment flow.' });
+  /* With Razorpay live, every order goes through the verified payment route:
+     prepaid orders for the full amount, cash on delivery for its advance.
+     Otherwise this endpoint would mint paid orders, or COD orders with nothing
+     paid, for free. Without Razorpay (local and demo) it still places both. */
+  if (razorpayReady()) {
+    return res.status(400).json({
+      error: payment === 'COD'
+        ? `Cash on delivery needs a ₹${COD_ADVANCE} advance paid online.`
+        : 'Online payments must go through the payment flow.',
+    });
   }
 
   const totals = priceCart(items, couponCode);
@@ -862,35 +869,57 @@ app.delete('/api/orders/:id', auth, (req, res) => {
 
 /* ----------------------------------------------------------------- payments */
 
-/* Tells the checkout whether to open Razorpay or fall back to the demo flow. */
+/* Cash on delivery is only offered against an advance paid online, so every
+   COD parcel has money behind it before it ships. Razorpay charges the
+   advance; the courier collects the rest. */
+const COD_ADVANCE = 200;
+const COD_MIN_ORDER = 500;
+
+/* Tells the checkout whether to open Razorpay or fall back to the demo flow,
+   and the COD rules to show -- sent from here so the page cannot drift from
+   what is enforced. */
 app.get('/api/payments/config', (_req, res) =>
-  res.json({ razorpay: razorpayReady(), keyId: razorpayReady() ? rzpPublicKey() : null }));
+  res.json({
+    razorpay: razorpayReady(),
+    keyId: razorpayReady() ? rzpPublicKey() : null,
+    codAdvance: COD_ADVANCE,
+    codMinOrder: COD_MIN_ORDER,
+  }));
 
 /* Step 1: price the cart here, open a Razorpay order for exactly that amount,
    and park the priced snapshot. No site order exists until payment verifies. */
 app.post('/api/payments/razorpay/order', async (req, res) => {
   if (!razorpayReady()) return res.status(503).json({ error: 'Online payment is not configured.' });
 
-  const { items = [], customer = {}, couponCode = '' } = req.body || {};
+  const { items = [], customer = {}, couponCode = '', payment = 'Prepaid' } = req.body || {};
   if (!items.length) return res.status(400).json({ error: 'Your cart is empty.' });
 
   const totals = priceCart(items, couponCode);
   if (!totals.priced.length) return res.status(400).json({ error: 'None of those products are available.' });
   if (totals.total <= 0) return res.status(400).json({ error: 'Order total must be greater than zero.' });
 
+  /* The minimum is checked against the priced total, after any coupon, so a
+     discount cannot sneak a small basket under the COD rule. */
+  const cod = payment === 'COD';
+  if (cod && totals.total < COD_MIN_ORDER) {
+    return res.status(400).json({ error: `Cash on delivery is available on orders of ₹${COD_MIN_ORDER} or more.` });
+  }
+  const charge = cod ? Math.min(COD_ADVANCE, totals.total) : totals.total;
+
   const short = uid('pay');
   try {
     const rzpOrder = await createRzpOrder({
-      amount: totals.total,
+      amount: charge,
       receipt: short,
-      notes: { customer: customer.name || '', phone: customer.phone || '' },
+      notes: { customer: customer.name || '', phone: customer.phone || '', mode: cod ? 'COD advance' : 'Prepaid' },
     });
 
     db.payments = [{
       id: short,
       razorpayOrderId: rzpOrder.id,
       status: 'created',
-      amount: totals.total,
+      mode: cod ? 'COD' : 'Prepaid',
+      amount: charge,
       totals,
       customer,
       createdAt: new Date().toISOString(),
@@ -916,10 +945,16 @@ function fulfilPayment(intent, paymentId) {
   const existing = db.orders.find((o) => o.razorpayPaymentId === paymentId);
   if (existing) return existing;
 
-  const order = buildOrder(intent.totals, intent.customer, 'Prepaid', {
+  /* `amount` is what Razorpay charged: the whole total for a prepaid order,
+     the advance for COD. Intents from before COD advances have no `mode` and
+     were all prepaid. */
+  const cod = intent.mode === 'COD';
+  const order = buildOrder(intent.totals, intent.customer, cod ? 'COD' : 'Prepaid', {
     razorpayOrderId: intent.razorpayOrderId,
     razorpayPaymentId: paymentId,
     paidAt: new Date().toISOString(),
+    amountPaid: intent.amount,
+    balanceDue: Math.max(0, intent.totals.total - intent.amount),
   });
   db.orders = [order, ...db.orders];
   commitStock(intent.totals.priced);

@@ -301,6 +301,12 @@ export default function AdminOrders() {
                 <div className="flex justify-between border-t border-line pt-2.5 text-[1rem] font-semibold">
                   <dt>Total</dt><dd className="tnum">{inr(open.total)}</dd>
                 </div>
+                {open.payment === 'COD' && open.amountPaid > 0 && (
+                  <>
+                    <div className="flex justify-between text-ok"><dt>Advance paid online</dt><dd className="tnum">{inr(open.amountPaid)}</dd></div>
+                    <div className="flex justify-between font-medium"><dt>Collect on delivery</dt><dd className="tnum">{inr(open.balanceDue)}</dd></div>
+                  </>
+                )}
               </dl>
             </div>
 

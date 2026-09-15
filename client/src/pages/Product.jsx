@@ -8,6 +8,7 @@ import {
 
 import { api, inr } from '../lib/api.js';
 import { useAsync, useShop } from '../lib/store.jsx';
+import { trackViewContent } from '../lib/pixel.js';
 import ProductImage from '../components/ProductImage.jsx';
 import ProductCard from '../components/ProductCard.jsx';
 import { Stagger } from '../components/Motion.jsx';
@@ -145,6 +146,7 @@ export default function Product() {
 
   useEffect(() => { setQty(1); setActiveImg(0); setAdded(false); setTab('details'); setWish(false); }, [slug]);
   useEffect(() => { if (p?.id) remember(p); }, [p, remember]);
+  useEffect(() => { if (p?.id) trackViewContent(p); }, [p?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* The floating WhatsApp disc is fixed to the bottom-right of the viewport, so
      on a phone it was landing squarely on this page's sticky Add to cart and
