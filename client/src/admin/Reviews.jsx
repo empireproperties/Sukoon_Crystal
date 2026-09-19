@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Star, Check, X, Trash2, Play, MessageSquare, Pin, Plus, FolderOpen } from 'lucide-react';
+import { Star, Check, X, Trash2, Play, MessageSquare, Pin, Plus, ChevronDown } from 'lucide-react';
 
 import { api, dateLabel } from '../lib/api.js';
 import { useAsync, useShop } from '../lib/store.jsx';
@@ -30,72 +30,52 @@ function Stars({ n }) {
 const BLANK = { name: '', designation: '', rating: 0, title: '', body: '', video: '', productId: '', featured: false };
 
 /**
- * The clips already sitting in the storage bucket.
+ * Every clip in the storage bucket, shown straight away.
  *
- * A clip can reach the bucket without passing through the upload button above:
- * the seven imported from the old Shopify store did. Without this the only way
- * to use one would be to download the file and upload the very same bytes
- * back, which is slow and leaves two copies paid for.
+ * Not behind a button: these are the clips, and hiding them behind "browse"
+ * made picking one a decision before it was a choice. Clicking a clip attaches
+ * it, clicking it again lets it go.
  *
  * Thumbnails are the videos themselves at `preload="metadata"` -- a few
  * kilobytes each, the first frame, not the whole file.
  */
-function BucketPicker({ onPick }) {
+function BucketClips({ value, onPick }) {
   const { toast } = useShop();
-  const [open, setOpen] = useState(false);
   const [clips, setClips] = useState(null);
 
-  const show = async () => {
-    setOpen(true);
-    if (clips) return;
-    try {
-      setClips(await api.reviewVideos());
-    } catch (e) {
-      toast(e.message, 'error');
-      setOpen(false);
-    }
-  };
+  useEffect(() => {
+    let alive = true;
+    api.reviewVideos()
+      .then((c) => { if (alive) setClips(c); })
+      .catch((e) => { if (alive) { setClips([]); toast(e.message, 'error'); } });
+    return () => { alive = false; };
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, []);
 
-  if (!open) {
-    return (
-      <button type="button" onClick={show} className="btn btn-sm mt-3 border border-line">
-        <FolderOpen size={13} /> Or pick a clip already uploaded
-      </button>
-    );
-  }
+  if (!clips) return <p className="mt-3 text-[0.78rem] text-muted">Reading your clips…</p>;
+  if (!clips.length) return null;
 
   return (
-    <div className="mt-3 border border-line bg-surface p-3" style={{ borderRadius: 'var(--r-card)' }}>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[0.84rem] font-medium">Clips in your bucket</p>
-        <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="text-muted hover:text-ink">
-          <X size={15} />
-        </button>
-      </div>
-
-      {!clips ? (
-        <p className="mt-2 text-[0.78rem] text-muted">Reading the bucket…</p>
-      ) : !clips.length ? (
-        <p className="mt-2 text-[0.78rem] text-muted">
-          Nothing stored yet. Upload a clip above, or check that the R2 variables are set on the API.
-        </p>
-      ) : (
-        <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {clips.map((c) => (
-            <button
-              key={c.key}
-              type="button"
-              onClick={() => { onPick(c.url); setOpen(false); }}
-              className="overflow-hidden border border-line transition hover:border-brand"
-              style={{ borderRadius: 'var(--r-btn)' }}
-            >
-              <video src={c.url} muted playsInline preload="metadata" tabIndex={-1}
-                className="h-24 w-full bg-black object-cover" />
-              <span className="block px-1.5 py-1 text-left text-[0.66rem] text-muted">{c.sizeMb}MB</span>
-            </button>
-          ))}
-        </div>
-      )}
+    <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
+      {clips.map((c) => {
+        const chosen = value === c.url;
+        return (
+          <button
+            key={c.key}
+            type="button"
+            onClick={() => onPick(chosen ? '' : c.url)}
+            className={`overflow-hidden border-2 transition ${chosen ? 'border-brand' : 'border-line hover:border-muted'}`}
+            style={{ borderRadius: 'var(--r-btn)' }}
+          >
+            <video src={c.url} muted playsInline preload="metadata" tabIndex={-1}
+              className="h-24 w-full bg-black object-cover" />
+            <span className="flex items-center justify-between gap-1 px-1.5 py-1 text-[0.66rem] text-muted">
+              {c.sizeMb}MB
+              {chosen && <Check size={11} strokeWidth={2.6} className="text-brand" />}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -114,6 +94,10 @@ function AddReview({ onAdded, products = [] }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(BLANK);
   const [saving, setSaving] = useState(false);
+  /* Name, stars and words are folded away. A clip needs none of them, and an
+     open field asks to be filled in -- which is how reviews end up carrying
+     words the customer never said. */
+  const [details, setDetails] = useState(false);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const submit = async (e) => {
@@ -150,7 +134,7 @@ function AddReview({ onAdded, products = [] }) {
         <div>
           <p className="text-[0.95rem] font-medium">Add a review</p>
           <p className="mt-0.5 text-[0.78rem] text-muted">
-            For the ones customers sent you on WhatsApp or Instagram. Publishes straight away.
+            Pick a clip, say which bracelet it is about, publish.
           </p>
         </div>
         <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="text-muted hover:text-ink">
@@ -158,61 +142,22 @@ function AddReview({ onAdded, products = [] }) {
         </button>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <div>
-          <label className="field-label" htmlFor="ar-name">
-            Name <span className="text-muted">(optional with a video)</span>
-          </label>
-          <input id="ar-name" className="field" value={form.name} onChange={set('name')} maxLength={60} />
-        </div>
-        <div>
-          <label className="field-label" htmlFor="ar-role">
-            Designation <span className="text-muted">(optional)</span>
-          </label>
-          <input
-            id="ar-role" className="field" value={form.designation} onChange={set('designation')}
-            maxLength={80} placeholder="Yoga teacher, Delhi"
-          />
-        </div>
+      {/* The clip comes first because it is the review. */}
+      <div className="mt-4">
+        <VideoPicker
+          admin
+          label="Upload a clip"
+          value={form.video}
+          onChange={(url) => setForm((f) => ({ ...f, video: url }))}
+          disabled={saving}
+        />
+        <BucketClips value={form.video} onPick={(url) => setForm((f) => ({ ...f, video: url }))} />
       </div>
 
-      <div className="mt-3">
-        <span className="field-label">Rating <span className="text-muted">(optional with a video)</span></span>
-        <div className="flex items-center gap-1 pt-1">
-          {[1, 2, 3, 4, 5].map((n) => (
-            <button key={n} type="button" onClick={() => setForm((f) => ({ ...f, rating: n }))}
-              aria-label={`${n} star${n > 1 ? 's' : ''}`}>
-              <Star size={22} strokeWidth={1.6} className={n <= form.rating ? 'fill-accent text-accent' : 'text-line'} />
-            </button>
-          ))}
-          {form.rating > 0 && (
-            <button type="button" onClick={() => setForm((f) => ({ ...f, rating: 0 }))}
-              className="ml-2 text-[0.74rem] text-muted underline underline-offset-2 hover:text-ink">
-              Clear
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-3">
-        <label className="field-label" htmlFor="ar-title">Headline <span className="text-muted">(optional)</span></label>
-        <input id="ar-title" className="field" value={form.title} onChange={set('title')} maxLength={120} />
-      </div>
-
-      <div className="mt-3">
-        <label className="field-label" htmlFor="ar-body">
-          What they said <span className="text-muted">(optional with a video)</span>
-        </label>
-        <textarea id="ar-body" rows={3} className="field" value={form.body} onChange={set('body')} maxLength={1500} />
-      </div>
-
-      {/* The piece this review is about. Attaching it puts the bracelet, its
-          price and an Add to cart button on the review card, so someone
-          watching the clip can buy the exact piece being worn. */}
-      <div className="mt-3">
-        <label className="field-label" htmlFor="ar-product">
-          Which product is it about? <span className="text-muted">(optional)</span>
-        </label>
+      {/* Attaching the piece puts it on the card with an Add to cart button,
+          so someone watching the clip can buy what they are looking at. */}
+      <div className="mt-4">
+        <label className="field-label" htmlFor="ar-product">Which bracelet is it about?</label>
         <select id="ar-product" className="field" value={form.productId} onChange={set('productId')}>
           <option value="">No product — just the review</option>
           {products.map((p) => (
@@ -221,22 +166,60 @@ function AddReview({ onAdded, products = [] }) {
         </select>
       </div>
 
-      <div className="mt-4 border-t border-line pt-4">
-        <span className="field-label">Their video <span className="text-muted">(optional)</span></span>
-        <p className="-mt-0.5 mb-2.5 text-[0.75rem] leading-snug text-muted">
-          Upload the clip they sent you. It is stored on our own Cloudflare
-          bucket, so it cannot vanish the way someone else’s link can.
-          A review with a video goes to the front of the homepage rail.
-        </p>
-        <VideoPicker
-          admin
-          label="Upload their clip"
-          value={form.video}
-          onChange={(url) => setForm((f) => ({ ...f, video: url }))}
-          disabled={saving}
-        />
-        {!form.video && <BucketPicker onPick={(url) => setForm((f) => ({ ...f, video: url }))} />}
-      </div>
+      <button
+        type="button"
+        onClick={() => setDetails((d) => !d)}
+        className="mt-3 flex items-center gap-1 text-[0.78rem] text-muted underline-offset-2 hover:text-ink"
+      >
+        <ChevronDown size={13} className={`transition-transform ${details ? 'rotate-180' : ''}`} />
+        Name, rating and words (optional)
+      </button>
+
+      {details && (
+        <div className="mt-2 border-t border-line pt-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="field-label" htmlFor="ar-name">Name</label>
+              <input id="ar-name" className="field" value={form.name} onChange={set('name')} maxLength={60} />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="ar-role">Designation</label>
+              <input
+                id="ar-role" className="field" value={form.designation} onChange={set('designation')}
+                maxLength={80} placeholder="Yoga teacher, Delhi"
+              />
+            </div>
+          </div>
+
+          <div className="mt-3">
+            <span className="field-label">Rating</span>
+            <div className="flex items-center gap-1 pt-1">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button key={n} type="button" onClick={() => setForm((f) => ({ ...f, rating: n }))}
+                  aria-label={`${n} star${n > 1 ? 's' : ''}`}>
+                  <Star size={22} strokeWidth={1.6} className={n <= form.rating ? 'fill-accent text-accent' : 'text-line'} />
+                </button>
+              ))}
+              {form.rating > 0 && (
+                <button type="button" onClick={() => setForm((f) => ({ ...f, rating: 0 }))}
+                  className="ml-2 text-[0.74rem] text-muted underline underline-offset-2 hover:text-ink">
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-3">
+            <label className="field-label" htmlFor="ar-title">Headline</label>
+            <input id="ar-title" className="field" value={form.title} onChange={set('title')} maxLength={120} />
+          </div>
+
+          <div className="mt-3">
+            <label className="field-label" htmlFor="ar-body">What they said</label>
+            <textarea id="ar-body" rows={3} className="field" value={form.body} onChange={set('body')} maxLength={1500} />
+          </div>
+        </div>
+      )}
 
       <label className="mt-4 flex items-center gap-2 text-[0.84rem]">
         <input
