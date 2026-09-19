@@ -337,6 +337,37 @@ export default function Product() {
               </div>
             </div>
 
+            {/* A clip of the piece itself, when there is one. Photographs
+                cannot show a cup catching light or a bracelet moving on a
+                wrist, which is the whole reason to film it. */}
+            {p.video && (
+              <div className="mt-4 flex items-start gap-3.5 rounded-[var(--r-card)] border border-line bg-surface p-3">
+                <video
+                  src={typeof p.video === 'string' ? p.video : p.video.url}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  className="h-[210px] w-[158px] shrink-0 bg-black object-cover"
+                  style={{ borderRadius: 'var(--r-btn)' }}
+                />
+                <div className="min-w-0">
+                  <p className="text-[0.9rem] font-medium">See it in use</p>
+                  <p className="mt-1 text-[0.8rem] leading-relaxed text-muted">
+                    A short clip of this piece, filmed by us.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Said before the money changes hands, not discovered afterwards
+                in a policy page. The returns route refuses these outright. */}
+            {p.returnable === false && (
+              <p className="mt-3 rounded-[var(--r-btn)] border border-line bg-bg2 px-3.5 py-2.5 text-[0.78rem] leading-relaxed text-muted">
+                <strong className="text-ink">No return or exchange on this item.</strong>{' '}
+                It is consumable and meant to be lit, so it cannot come back once it has left us.
+              </p>
+            )}
+
             {/* assurance row */}
             <div className="mt-4 grid grid-cols-2 gap-2.5">
               {[
@@ -533,7 +564,17 @@ export default function Product() {
                   </>
                 ) : (
                   <ul className="space-y-3.5">
-                    {TAB_COPY[tab].map((line, i) => (
+                    {/* The shipping copy ends on a seven-day replacement
+                        promise, which is the published policy and wrong for a
+                        consumable. A page that offers a return in one panel
+                        and refuses it in another is worse than either. */}
+                    {(tab === 'shipping' && p.returnable === false
+                      ? [
+                        ...TAB_COPY.shipping.slice(0, -1),
+                        'No return or exchange on this item. It is consumable and meant to be lit, so it cannot come back once it has left us.',
+                      ]
+                      : TAB_COPY[tab]
+                    ).map((line, i) => (
                       <li key={i} className="flex gap-3 text-[0.9rem] leading-relaxed text-muted">
                         <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-accent" /> {line}
                       </li>

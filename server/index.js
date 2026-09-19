@@ -1494,6 +1494,27 @@ function returnEligibility(order) {
   if ((db.returns || []).some((r) => r.orderId === order.id && !['rejected', 'closed'].includes(r.status))) {
     return { ok: false, reason: 'A return is already open for this order.' };
   }
+
+  /* Some things cannot come back. A havan cup is lit on arrival and a burnt
+     cup is ash; the product carries `returnable: false` and the product page
+     says so before anyone buys. Checked here too, because a policy the
+     storefront states and the API does not enforce is not a policy.
+     Only when the whole order is non-returnable: a mixed basket still has
+     something worth sending back, and the admin settles which lines. */
+  const lines = order.items || [];
+  const barred = lines.filter((it) => {
+    const p = db.products.find((x) => x.id === it.productId);
+    return p && p.returnable === false;
+  });
+  if (lines.length && barred.length === lines.length) {
+    return {
+      ok: false,
+      reason: barred.length === 1
+        ? `${barred[0].name} cannot be returned or exchanged.`
+        : 'Nothing in this order can be returned or exchanged.',
+    };
+  }
+
   return { ok: true, daysLeft: RETURN_WINDOW_DAYS - days };
 }
 

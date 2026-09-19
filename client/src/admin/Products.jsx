@@ -7,6 +7,7 @@ import {
 import { api, inr } from '../lib/api.js';
 import { useAsync, useShop } from '../lib/store.jsx';
 import ProductImage from '../components/ProductImage.jsx';
+import VideoPicker from '../components/VideoPicker.jsx';
 import { CHAKRAS, ZODIAC } from '../components/Ornaments.jsx';
 import { SlideOver, ConfirmDelete, Toggle, Field, EmptyState, StatCard } from './ui.jsx';
 
@@ -21,7 +22,10 @@ const ELEMENTS = ['Fire', 'Earth', 'Air', 'Water', 'Aether'];
 const blank = () => ({
   name: '', category: 'wellness-bracelets', price: 999, mrp: 1399, stock: 20,
   stone: '', description: '', benefits: [], chakra: 'Heart', element: 'Earth',
-  zodiac: [], images: [], featured: false, bestseller: false, active: true,
+  zodiac: [], images: [], video: '', featured: false, bestseller: false, active: true,
+  /* Returnable unless someone says otherwise: the seven-day window is the
+     published policy, and an exception has to be a deliberate act. */
+  returnable: true,
 });
 
 export default function AdminProducts() {
@@ -271,6 +275,25 @@ export default function AdminProducts() {
                 or paste an image URL
               </button>
             </Field>
+
+            {/* Photographs cannot show a cup catching light or a bracelet
+                moving on a wrist. Stored in the same Cloudflare bucket as the
+                review clips, so it costs nothing to serve. */}
+            <Field label="Product video" hint="Shown under the photos on the product page.">
+              <VideoPicker
+                admin
+                label="Upload a clip"
+                value={editing.video || ''}
+                onChange={(url) => patch('video', url)}
+              />
+            </Field>
+
+            <Toggle
+              checked={editing.returnable !== false}
+              onChange={(v) => patch('returnable', v)}
+              label="Returns and exchanges allowed"
+              hint="Turn off for anything consumable — a havan cup is lit on arrival. The product page says so before the sale, and a return raised against it is refused."
+            />
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Product name" className="sm:col-span-2">
