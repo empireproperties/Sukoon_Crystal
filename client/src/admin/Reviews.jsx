@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Star, Check, X, Trash2, Play, MessageSquare, Pin, Plus } from 'lucide-react';
+import { Star, Check, X, Trash2, Play, MessageSquare, Pin, Plus, FolderOpen } from 'lucide-react';
 
 import { api, dateLabel } from '../lib/api.js';
 import { useAsync, useShop } from '../lib/store.jsx';
@@ -26,6 +26,77 @@ function Stars({ n }) {
 }
 
 const BLANK = { name: '', designation: '', rating: 5, title: '', body: '', video: '', productId: '', featured: false };
+
+/**
+ * The clips already sitting in the storage bucket.
+ *
+ * A clip can reach the bucket without passing through the upload button above:
+ * the seven imported from the old Shopify store did. Without this the only way
+ * to use one would be to download the file and upload the very same bytes
+ * back, which is slow and leaves two copies paid for.
+ *
+ * Thumbnails are the videos themselves at `preload="metadata"` -- a few
+ * kilobytes each, the first frame, not the whole file.
+ */
+function BucketPicker({ onPick }) {
+  const { toast } = useShop();
+  const [open, setOpen] = useState(false);
+  const [clips, setClips] = useState(null);
+
+  const show = async () => {
+    setOpen(true);
+    if (clips) return;
+    try {
+      setClips(await api.reviewVideos());
+    } catch (e) {
+      toast(e.message, 'error');
+      setOpen(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button type="button" onClick={show} className="btn btn-sm mt-3 border border-line">
+        <FolderOpen size={13} /> Or pick a clip already uploaded
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-3 border border-line bg-surface p-3" style={{ borderRadius: 'var(--r-card)' }}>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[0.84rem] font-medium">Clips in your bucket</p>
+        <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="text-muted hover:text-ink">
+          <X size={15} />
+        </button>
+      </div>
+
+      {!clips ? (
+        <p className="mt-2 text-[0.78rem] text-muted">Reading the bucket…</p>
+      ) : !clips.length ? (
+        <p className="mt-2 text-[0.78rem] text-muted">
+          Nothing stored yet. Upload a clip above, or check that the R2 variables are set on the API.
+        </p>
+      ) : (
+        <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
+          {clips.map((c) => (
+            <button
+              key={c.key}
+              type="button"
+              onClick={() => { onPick(c.url); setOpen(false); }}
+              className="overflow-hidden border border-line transition hover:border-brand"
+              style={{ borderRadius: 'var(--r-btn)' }}
+            >
+              <video src={c.url} muted playsInline preload="metadata" tabIndex={-1}
+                className="h-24 w-full bg-black object-cover" />
+              <span className="block px-1.5 py-1 text-left text-[0.66rem] text-muted">{c.sizeMb}MB</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /**
  * A review the shop enters itself.
@@ -152,6 +223,7 @@ function AddReview({ onAdded, products = [] }) {
           onChange={(url) => setForm((f) => ({ ...f, video: url }))}
           disabled={saving}
         />
+        {!form.video && <BucketPicker onPick={(url) => setForm((f) => ({ ...f, video: url }))} />}
       </div>
 
       <label className="mt-4 flex items-center gap-2 text-[0.84rem]">

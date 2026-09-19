@@ -174,6 +174,9 @@ export const api = {
     return request('/reviews/video', { method: 'POST', body: fd, auth: admin && 'admin' });
   },
 
+  /* Clips already in the bucket, for attaching one without uploading it again. */
+  reviewVideos: () => request('/reviews/videos', { auth: true }),
+
   /* Publishes straight away -- see the route's comment for why approval is not
      part of this path. */
   createReview: (body) => request('/reviews/admin', { method: 'POST', body, auth: true }),

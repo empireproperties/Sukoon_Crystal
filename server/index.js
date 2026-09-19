@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 import { db, save, saveNow, uid, initDb } from './db.js';
 import { DEFAULT_DESIGN, DEFAULT_PALETTE, isLivePalette } from './theme.js';
 import { configureCloudinary, uploadBuffer, uploadVideoBuffer } from './cloudinary.js';
-import { configureR2, uploadVideoToR2, deleteFromR2, isOurs as isOurR2Url, keyFromUrl as r2KeyFromUrl } from './r2.js';
+import { configureR2, uploadVideoToR2, deleteFromR2, listVideos as listR2Videos, isOurs as isOurR2Url, keyFromUrl as r2KeyFromUrl } from './r2.js';
 import { seoForPath, headTagsFor, sitemapXml, robotsTxt, siteUrl } from './seo.js';
 import {
   requireAuth,
@@ -1275,6 +1275,22 @@ app.post('/api/reviews/video', (req, res) => {
       return res.status(502).json({ error: `The video could not be stored: ${e.message}` });
     }
   });
+});
+
+/**
+ * The clips sitting in the bucket, so the admin can attach one that is already
+ * there rather than re-uploading a file it already holds.
+ *
+ * Admin-only: this lists storage, and the keys are the unguessable part of
+ * every review video's URL -- published or not, approved or not.
+ */
+app.get('/api/reviews/videos', auth, async (_req, res) => {
+  if (!r2.configured) return res.json([]);
+  try {
+    res.json(await listR2Videos({ limit: 60 }));
+  } catch (e) {
+    res.status(502).json({ error: `Could not read the bucket: ${e.message}` });
+  }
 });
 
 /**

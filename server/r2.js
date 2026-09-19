@@ -24,7 +24,7 @@
  * objects nobody can reach.
  */
 import crypto from 'crypto';
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 
 /* Read at call time, never at import time -- env.js may load after this module. */
 const env = (k) => (process.env[k] || '').trim();
@@ -109,6 +109,37 @@ export async function uploadVideoToR2(buffer, { contentType }) {
   }));
 
   return { url: publicUrlFor(key), key, bytes: buffer.length, storage: 'r2' };
+}
+
+/**
+ * Every clip in the bucket, newest first.
+ *
+ * Exists because a clip can reach the bucket without going through the admin's
+ * file picker -- the ones imported from the old Shopify store did -- and
+ * without this there is no way to attach those to a review short of
+ * downloading and re-uploading the same file.
+ */
+export async function listVideos({ limit = 60 } = {}) {
+  if (!client) return [];
+
+  const out = await client.send(new ListObjectsV2Command({
+    Bucket: settings.bucket,
+    Prefix: `${PREFIX()}/`,
+    MaxKeys: Math.min(Math.max(limit, 1), 1000),
+  }));
+
+  return (out.Contents || [])
+    /* A "folder" in S3 is a zero-byte object; it is not a video. */
+    .filter((o) => o.Size > 0)
+    .sort((a, b) => new Date(b.LastModified) - new Date(a.LastModified))
+    .slice(0, limit)
+    .map((o) => ({
+      key: o.Key,
+      url: publicUrlFor(o.Key),
+      bytes: o.Size,
+      sizeMb: Number((o.Size / (1024 * 1024)).toFixed(1)),
+      uploadedAt: o.LastModified,
+    }));
 }
 
 /** Best-effort cleanup when a review is deleted. Never throws: an orphaned
