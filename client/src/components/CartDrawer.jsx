@@ -8,12 +8,15 @@ import { inr } from '../lib/api.js';
 import ProductImage from './ProductImage.jsx';
 
 export default function CartDrawer() {
-  const { cart, drawerOpen, setDrawerOpen, setQty, removeFromCart, subtotal, shipping, count } = useShop();
+  const { cart, drawerOpen, setDrawerOpen, setQty, removeFromCart, subtotal, shipping, count, freeDelivery } = useShop();
+  /* The threshold is a shop setting now, so the strip below reads it rather
+     than repeating a number that only used to be true. */
+  const freeAbove = freeDelivery?.enabled ? freeDelivery.above : 0;
   /* Every second unit of a buy-one-get-one line is free. Display only: the
      server prices the cart again from the catalogue at checkout. */
   const bogoDiscount = cart.reduce((t, l) => t + (l.bogo ? Math.floor(l.qty / 2) * l.price : 0), 0);
-  const toFree = Math.max(0, 999 - subtotal);
-  const progress = Math.min(100, (subtotal / 999) * 100);
+  const toFree = Math.max(0, freeAbove - subtotal);
+  const progress = freeAbove ? Math.min(100, (subtotal / freeAbove) * 100) : 100;
 
   /* Escape closes it, and the page behind stops scrolling while it is open —
      scrolling the catalogue under an open cart is disorienting on a laptop and
@@ -51,7 +54,7 @@ export default function CartDrawer() {
               </button>
             </header>
 
-            {cart.length > 0 && (
+            {cart.length > 0 && freeAbove > 0 && (
               <div className="border-b border-line px-5 py-3.5">
                 <p className="flex items-center gap-2 text-[0.78rem]">
                   <Truck size={14} strokeWidth={1.7} className="text-accent" />

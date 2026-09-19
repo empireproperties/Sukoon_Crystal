@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Minus, Plus, ShoppingBag, Truck, ShieldCheck, RotateCcw, Check, ChevronRight,
-  ChevronDown, Phone, BadgeCheck, Sparkles, Tag, MapPin, Heart, Share2, Star,
+  ChevronDown, Phone, BadgeCheck, Sparkles, Tag, MapPin, Heart, Share2, Star, Play,
 } from 'lucide-react';
 
 import { api, inr } from '../lib/api.js';
@@ -174,6 +174,15 @@ export default function Product() {
   const signs = useMemo(() => ZODIAC.filter((z) => (p?.zodiac || []).includes(z.id)), [p]);
   const images = p?.images?.length ? p.images : [null];
 
+  /* The clip belongs in the gallery, after the photographs: it is another view
+     of the same object, not a separate section further down the page. Photos
+     keep their index, so `media[i]` and `p.images[i]` agree for every photo. */
+  const videoSrc = p?.video ? (typeof p.video === 'string' ? p.video : p.video.url) : '';
+  const media = [
+    ...images.map((src) => ({ kind: 'photo', src })),
+    ...(videoSrc ? [{ kind: 'video', src: videoSrc }] : []),
+  ];
+
   /* The thumbnail rail runs down the left of the photo and finishes level with
      it: the thumbnails stretch to share the photo's height, so there is never
      a blank strip under them however many pictures a product has.
@@ -185,7 +194,7 @@ export default function Product() {
      three to six photos, which is what nearly every product has; outside that
      the clamp holds the rail to a sensible width and the crop goes slightly
      portrait or landscape instead. */
-  const thumb = Math.round(Math.min(132, Math.max(64, (540 - 2 - 10 * images.length) / (images.length + 1))));
+  const thumb = Math.round(Math.min(132, Math.max(64, (540 - 2 - 10 * media.length) / (media.length + 1))));
   const recentlyViewed = seen.filter((s) => s.slug !== slug).slice(0, 5);
 
   if (loading) {
@@ -262,7 +271,7 @@ export default function Product() {
               320px screen. */}
           <div className="min-w-0">
             <div className="flex min-w-0 flex-col-reverse gap-3 lg:flex-row" style={{ '--thumb': `${thumb}px` }}>
-              {images.length > 1 && (
+              {media.length > 1 && (
                 <div
                   /* Below lg this is a horizontal scroller under the photo:
                      `w-full min-w-0` so it is a scroll container rather than a
@@ -274,29 +283,52 @@ export default function Product() {
                      bottom of the picture. */
                   className="no-scrollbar flex w-full min-w-0 gap-2.5 overflow-x-auto lg:w-[var(--thumb)] lg:shrink-0 lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto"
                 >
-                  {images.map((img, i) => (
+                  {media.map((m, i) => (
                     <button
                       key={i}
                       onClick={() => setActiveImg(i)}
                       /* Hovering is enough — the same read-before-you-click
-                         behaviour the product cards now have. */
+                         behaviour the product cards now have. The clip is the
+                         exception: hovering swaps to it, but nothing plays
+                         until the visitor presses play in the main frame. */
                       onMouseEnter={() => setActiveImg(i)}
                       className={`shrink-0 overflow-hidden border-2 transition-colors lg:w-full lg:flex-1 lg:basis-0 lg:min-h-[48px] ${
                         activeImg === i ? 'border-brand' : 'border-line hover:border-muted'
                       }`}
                       style={{ borderRadius: 'var(--r-card)' }}
-                      aria-label={`View image ${i + 1} of ${images.length}`}
+                      aria-label={m.kind === 'video' ? 'Watch the video' : `View image ${i + 1} of ${images.length}`}
                     >
                       {/* `h-full` at lg: the button's height comes from the
                           rail, and the picture fills whatever it is given. The
                           `min-h` above is what makes a nine-photo rail scroll
                           rather than squash. */}
-                      <ProductImage
-                        product={p}
-                        index={i}
-                        className="h-16 w-16 lg:h-full lg:w-full"
-                        sizes="140px"
-                      />
+                      {m.kind === 'video' ? (
+                        <span className="relative block h-16 w-16 lg:h-full lg:w-full">
+                          {/* `preload="metadata"` is the first frame and a few
+                              kilobytes, not the clip. */}
+                          <video
+                            src={m.src}
+                            muted
+                            playsInline
+                            preload="metadata"
+                            tabIndex={-1}
+                            aria-hidden="true"
+                            className="h-full w-full bg-black object-cover"
+                          />
+                          <span className="absolute inset-0 grid place-items-center">
+                            <span className="grid h-7 w-7 place-items-center rounded-full bg-white/90 text-ink">
+                              <Play size={12} className="ml-0.5 fill-current" />
+                            </span>
+                          </span>
+                        </span>
+                      ) : (
+                        <ProductImage
+                          product={p}
+                          index={i}
+                          className="h-16 w-16 lg:h-full lg:w-full"
+                          sizes="140px"
+                        />
+                      )}
                     </button>
                   ))}
                 </div>
@@ -310,12 +342,22 @@ export default function Product() {
                         laptop screen; the crop costs less than that does. It
                         matches the product cards, so the shape does not change
                         between the grid and this page. */}
-                    <ProductImage product={p} index={activeImg} className="aspect-square" priority sizes="(max-width: 1024px) 100vw, 400px" />
+                    {media[activeImg]?.kind === 'video' ? (
+                      <video
+                        src={media[activeImg].src}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        className="aspect-square w-full bg-black object-contain"
+                      />
+                    ) : (
+                      <ProductImage product={p} index={activeImg} className="aspect-square" priority sizes="(max-width: 1024px) 100vw, 400px" />
+                    )}
                   </motion.div>
                 </AnimatePresence>
-                {images.length > 1 && (
+                {media.length > 1 && (
                   <span className="pointer-events-none absolute bottom-3 right-3 rounded-full bg-surface/85 px-2.5 py-1 text-[0.68rem] text-muted backdrop-blur-sm tnum">
-                    {activeImg + 1} / {images.length}
+                    {activeImg + 1} / {media.length}
                   </span>
                 )}
                 <div className="absolute right-3 top-3 flex flex-col gap-2">
@@ -336,28 +378,6 @@ export default function Product() {
                 </div>
               </div>
             </div>
-
-            {/* A clip of the piece itself, when there is one. Photographs
-                cannot show a cup catching light or a bracelet moving on a
-                wrist, which is the whole reason to film it. */}
-            {p.video && (
-              <div className="mt-4 flex items-start gap-3.5 rounded-[var(--r-card)] border border-line bg-surface p-3">
-                <video
-                  src={typeof p.video === 'string' ? p.video : p.video.url}
-                  controls
-                  playsInline
-                  preload="metadata"
-                  className="h-[210px] w-[158px] shrink-0 bg-black object-cover"
-                  style={{ borderRadius: 'var(--r-btn)' }}
-                />
-                <div className="min-w-0">
-                  <p className="text-[0.9rem] font-medium">See it in use</p>
-                  <p className="mt-1 text-[0.8rem] leading-relaxed text-muted">
-                    A short clip of this piece, filmed by us.
-                  </p>
-                </div>
-              </div>
-            )}
 
             {/* Said before the money changes hands, not discovered afterwards
                 in a policy page. The returns route refuses these outright. */}

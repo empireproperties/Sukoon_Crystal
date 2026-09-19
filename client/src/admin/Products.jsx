@@ -23,6 +23,8 @@ const blank = () => ({
   name: '', category: 'wellness-bracelets', price: 999, mrp: 1399, stock: 20,
   stone: '', description: '', benefits: [], chakra: 'Heart', element: 'Earth',
   zodiac: [], images: [], video: '', featured: false, bestseller: false, active: true,
+  /* Delivery follows the shop setting unless this product says otherwise. */
+  shippingMode: 'default', shippingFee: 0,
   /* Returnable unless someone says otherwise: the seven-day window is the
      published policy, and an exception has to be a deliberate act. */
   returnable: true,
@@ -332,6 +334,30 @@ export default function AdminProducts() {
               label="Buy one get one free"
               hint="Every second unit is free. The discount is worked out on the server, so the cart, the order and the invoice cannot disagree about it."
             />
+
+            {/* A basket takes the dearest delivery charge in it, not the sum:
+                it goes in one parcel. The shop-wide charge and the free-above
+                threshold live in Appearance > Store details. */}
+            <Field label="Delivery" hint="Shop default unless this product needs its own.">
+              <select
+                value={editing.shippingMode || 'default'}
+                onChange={(e) => patch('shippingMode', e.target.value)}
+                className="field"
+              >
+                <option value="default">Shop default charge</option>
+                <option value="free">Always free to deliver</option>
+                <option value="own">Its own charge</option>
+              </select>
+              {editing.shippingMode === 'own' && (
+                <input
+                  type="number"
+                  className="field mt-2"
+                  value={editing.shippingFee ?? 0}
+                  onChange={(e) => patch('shippingFee', Math.max(0, Number(e.target.value) || 0))}
+                  placeholder="Charge in ₹"
+                />
+              )}
+            </Field>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Product name" className="sm:col-span-2">

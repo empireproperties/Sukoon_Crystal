@@ -200,6 +200,44 @@ export default function Appearance() {
             <Field label="Instagram URL" className="sm:col-span-2"><input value={form.instagram || ''} onChange={set('instagram')} className="field" /></Field>
             <Field label="Facebook URL" className="sm:col-span-2"><input value={form.facebook || ''} onChange={set('facebook')} className="field" /></Field>
 
+            {/* Delivery. Was three hardcoded numbers in the pricing code, the
+                cart drawer and the shipping copy, which is three places to
+                disagree with each other. A product can still override the
+                charge; this is what it falls back to. */}
+            <Field label="Delivery charge (₹)" hint="Unless a product sets its own or ships free.">
+              <input
+                type="number"
+                value={form.delivery?.fee ?? 60}
+                onChange={(e) => setForm((f) => ({
+                  ...f,
+                  delivery: { ...(f.delivery || {}), fee: Math.max(0, Number(e.target.value) || 0) },
+                }))}
+                className="field"
+              />
+            </Field>
+            <Field label="Free delivery above (₹)" hint="Cart total at which the charge is dropped.">
+              <input
+                type="number"
+                value={form.delivery?.freeAbove ?? 999}
+                onChange={(e) => setForm((f) => ({
+                  ...f,
+                  delivery: { ...(f.delivery || {}), freeAbove: Math.max(0, Number(e.target.value) || 0) },
+                }))}
+                className="field"
+              />
+            </Field>
+            <label className="flex items-center gap-2 text-[0.84rem] sm:col-span-2">
+              <input
+                type="checkbox"
+                checked={form.delivery?.removeAbove !== false}
+                onChange={(e) => setForm((f) => ({
+                  ...f,
+                  delivery: { ...(f.delivery || {}), removeAbove: e.target.checked },
+                }))}
+              />
+              Drop the delivery charge once the cart passes that total
+            </label>
+
             {/* Shown in the header, the footer and the mobile menu. Falls back
                 to the bundled mark when cleared, so it is never missing. */}
             <Field

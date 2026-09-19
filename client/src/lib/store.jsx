@@ -19,10 +19,12 @@ function cartReducer(state, action) {
       return [...state, {
         productId: p.id, slug: p.slug, name: p.name, price: p.price, mrp: p.mrp,
         image: p.images?.[0] || '', stone: p.stone, qty,
-        /* Carried so the cart can show the free unit. The server works the
-           discount out again from the catalogue -- this copy is for display
-           and is never what anyone is charged on. */
+        /* Carried so the cart can show the free unit and the delivery charge.
+           The server works both out again from the catalogue -- these copies
+           are for display and are never what anyone is charged on. */
         bogo: Boolean(p.bogo),
+        shippingMode: p.shippingMode || 'default',
+        shippingFee: Math.max(0, Number(p.shippingFee) || 0),
       }];
     }
     case 'qty':
@@ -104,9 +106,26 @@ export function ShopProvider({ children }) {
   const value = useMemo(() => {
     const count = cart.reduce((t, l) => t + l.qty, 0);
     const subtotal = cart.reduce((t, l) => t + l.price * l.qty, 0);
+
+    /* The same rule the server prices with, mirrored for display: the shop's
+       charge unless a product overrides it, the dearest charge in the basket
+       rather than the sum, and nothing at all above the threshold. The server
+       decides what is actually charged -- see priceCart. */
+    const d = settings?.delivery || {};
+    const baseFee = Math.max(0, Number(d.fee ?? 60) || 0);
+    const freeAbove = Math.max(0, Number(d.freeAbove ?? 999) || 0);
+    const removeAbove = d.removeAbove !== false;
+    const feeFor = (l) => (l.shippingMode === 'free' ? 0
+      : l.shippingMode === 'own' ? Math.max(0, Number(l.shippingFee) || 0)
+      : baseFee);
+    const shipping = !cart.length ? 0
+      : (removeAbove && freeAbove > 0 && subtotal >= freeAbove) ? 0
+      : Math.max(0, ...cart.map(feeFor));
+
     return {
       cart, count, subtotal,
-      shipping: subtotal === 0 ? 0 : subtotal >= 999 ? 0 : 60,
+      shipping,
+      freeDelivery: { above: freeAbove, enabled: removeAbove },
       addToCart: (product, qty) => { dispatch({ type: 'add', product, qty }); setDrawerOpen(true); trackAddToCart(product, qty || 1); },
       setQty: (id, qty) => dispatch({ type: 'qty', id, qty }),
       removeFromCart: (id) => dispatch({ type: 'remove', id }),

@@ -670,6 +670,8 @@ function priceCart(items = [], couponCode = '') {
         qty,
         bogo: Boolean(p.bogo),
         free,
+        shippingMode: p.shippingMode || 'default',
+        shippingFee: Math.max(0, Number(p.shippingFee) || 0),
         image: p.images?.[0] || '',
       };
     })
@@ -678,12 +680,27 @@ function priceCart(items = [], couponCode = '') {
   const subtotal = priced.reduce((t, it) => t + it.price * it.qty, 0);
   const bogoDiscount = priced.reduce((t, it) => t + it.price * it.free, 0);
 
-  /* Shipping is still decided by the shelf value of the basket, the same as it
-     is with a coupon: the free unit is a gift, not a smaller order.
+  /* Delivery: the shop's charge, unless a product overrides it. A basket takes
+     the dearest charge in it rather than the sum -- one parcel, one charge --
+     and a basket of nothing but free-delivery items costs nothing to send.
+     Read from settings so the shop can change it without a deploy.
+
+     Still decided by the shelf value of the basket, the same as it is with a
+     coupon: the free unit of a buy-one-get-one is a gift, not a smaller order.
      The coupon, though, is evaluated on what is actually being charged --
      discounting the shelf price of something already given away would take the
      same rupees off twice. */
-  const shipping = subtotal >= 999 ? 0 : 60;
+  const d = db.settings?.delivery || {};
+  const baseFee = Math.max(0, Number(d.fee ?? 60) || 0);
+  const freeAbove = Math.max(0, Number(d.freeAbove ?? 999) || 0);
+  const removeAbove = d.removeAbove !== false;
+
+  const feeFor = (it) => (it.shippingMode === 'free' ? 0
+    : it.shippingMode === 'own' ? it.shippingFee
+    : baseFee);
+
+  let shipping = priced.length ? Math.max(...priced.map(feeFor)) : 0;
+  if (removeAbove && freeAbove > 0 && subtotal >= freeAbove) shipping = 0;
   const applied = evaluateCoupon(couponCode, subtotal - bogoDiscount);
   const discount = applied.ok ? applied.discount : 0;
 
