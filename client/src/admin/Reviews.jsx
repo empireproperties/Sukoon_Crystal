@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Star, Check, X, Trash2, Play, MessageSquare, Pin, Plus } from 'lucide-react';
 
 import { api, dateLabel } from '../lib/api.js';
-import { useShop } from '../lib/store.jsx';
+import { useAsync, useShop } from '../lib/store.jsx';
 import { EmptyState, ConfirmDelete } from './ui.jsx';
 import VideoPicker from '../components/VideoPicker.jsx';
 
@@ -25,7 +25,7 @@ function Stars({ n }) {
   );
 }
 
-const BLANK = { name: '', designation: '', rating: 5, title: '', body: '', video: '', featured: false };
+const BLANK = { name: '', designation: '', rating: 5, title: '', body: '', video: '', productId: '', featured: false };
 
 /**
  * A review the shop enters itself.
@@ -36,7 +36,7 @@ const BLANK = { name: '', designation: '', rating: 5, title: '', body: '', video
  * entered here publishes immediately -- approval stands between a stranger and
  * the storefront, and the person filling this in is already past it.
  */
-function AddReview({ onAdded }) {
+function AddReview({ onAdded, products = [] }) {
   const { toast } = useShop();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(BLANK);
@@ -47,7 +47,7 @@ function AddReview({ onAdded }) {
     e.preventDefault();
     setSaving(true);
     try {
-      await api.createReview({ ...form, rating: Number(form.rating) });
+      await api.createReview({ ...form, rating: Number(form.rating), productId: form.productId || null });
       toast('Published. It is live on the storefront now.', 'success');
       setForm(BLANK);
       setOpen(false);
@@ -123,10 +123,26 @@ function AddReview({ onAdded }) {
         <textarea id="ar-body" rows={3} className="field" value={form.body} onChange={set('body')} required maxLength={1500} />
       </div>
 
+      {/* The piece this review is about. Attaching it puts the bracelet, its
+          price and an Add to cart button on the review card, so someone
+          watching the clip can buy the exact piece being worn. */}
+      <div className="mt-3">
+        <label className="field-label" htmlFor="ar-product">
+          Which product is it about? <span className="text-muted">(optional)</span>
+        </label>
+        <select id="ar-product" className="field" value={form.productId} onChange={set('productId')}>
+          <option value="">No product — just the review</option>
+          {products.map((p) => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+      </div>
+
       <div className="mt-4 border-t border-line pt-4">
         <span className="field-label">Their video <span className="text-muted">(optional)</span></span>
         <p className="-mt-0.5 mb-2.5 text-[0.75rem] leading-snug text-muted">
-          Upload the clip they sent you, or paste a YouTube or Instagram link.
+          Upload the clip they sent you. It is stored on our own Cloudflare
+          bucket, so it cannot vanish the way someone else’s link can.
           A review with a video goes to the front of the homepage rail.
         </p>
         <VideoPicker
@@ -136,12 +152,6 @@ function AddReview({ onAdded }) {
           onChange={(url) => setForm((f) => ({ ...f, video: url }))}
           disabled={saving}
         />
-        {!form.video && (
-          <input
-            className="field mt-3" value={form.video} onChange={set('video')}
-            placeholder="Or paste a YouTube or Instagram link"
-          />
-        )}
       </div>
 
       <label className="mt-4 flex items-center gap-2 text-[0.84rem]">
@@ -169,6 +179,13 @@ export default function AdminReviews() {
   const [tab, setTab] = useState('pending');
   const [list, setList] = useState(null);
   const [busy, setBusy] = useState('');
+
+  /* Every product, including hidden ones: a review can be about a piece that
+     is temporarily out of the shop. `|| []` rather than a destructuring
+     default -- useAsync starts at data: null, and a default only fills in for
+     undefined, so the list would be null on the first render. */
+  const { data: productData } = useAsync(() => api.products({ all: '1' }), []);
+  const products = productData || [];
 
   const load = () => api.allReviews(tab).then(setList).catch((e) => toast(e.message, 'error'));
   useEffect(() => { setList(null); load(); /* eslint-disable-next-line */ }, [tab]);
@@ -202,7 +219,9 @@ export default function AdminReviews() {
             {label}
           </button>
         ))}
-        <span className="ml-auto pb-2"><AddReview onAdded={() => { setTab('approved'); load(); }} /></span>
+        <span className="ml-auto pb-2">
+          <AddReview products={products} onAdded={() => { setTab('approved'); load(); }} />
+        </span>
       </div>
 
       {!list ? (
@@ -274,6 +293,25 @@ export default function AdminReviews() {
                   {r.video.url}
                 </a>
               ) : null}
+
+              {/* Attaching a product here as well as on the add form: most
+                  reviews arrive from the storefront with no product against
+                  them, and this is where they are read. */}
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <label className="text-[0.74rem] text-muted" htmlFor={`prod-${r.id}`}>Sells</label>
+                <select
+                  id={`prod-${r.id}`}
+                  className="field !h-8 !py-0 max-w-[260px] text-[0.78rem]"
+                  value={r.productId || ''}
+                  disabled={busy === r.id}
+                  onChange={(e) => act(r.id, { productId: e.target.value || null })}
+                >
+                  <option value="">Nothing attached</option>
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
 
               <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-4">
                 {r.status !== 'approved' && (

@@ -7,7 +7,7 @@ import { useShop } from '../lib/store.jsx';
 /* Mirrors the server's cap in server/index.js. Checked here as well so someone
    on a phone connection is told immediately, rather than after spending two
    minutes uploading something that will be rejected. */
-export const MAX_VIDEO_MB = 60;
+export const MAX_VIDEO_MB = 100;
 const ACCEPT_VIDEO = 'video/mp4,video/webm,video/quicktime,video/x-m4v';
 
 /**
@@ -15,7 +15,7 @@ const ACCEPT_VIDEO = 'video/mp4,video/webm,video/quicktime,video/x-m4v';
  * and by the admin's, which is why it lives here rather than inside either.
  *
  * The file is sent as soon as it is chosen rather than with the rest of the
- * form, for two reasons: a 60MB upload inside a form submit means a button that
+ * form, for two reasons: a 100MB upload inside a form submit means a button that
  * looks frozen for a minute, and sending it early lets the person watch what
  * they attached before committing to it.
  *

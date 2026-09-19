@@ -1,19 +1,10 @@
 import { useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Star, ChevronLeft, ChevronRight, Play, Quote, X } from 'lucide-react';
+import { Star, ChevronLeft, ChevronRight, Play, Quote, X, ShoppingBag, Check } from 'lucide-react';
 
-/* Shown until real approved reviews exist. Marked so it is obvious in the code
-   that these are placeholders -- the seeded star ratings were cleared from the
-   database for exactly this reason, and these must not quietly become "social
-   proof" that nobody actually gave. */
-const PLACEHOLDERS = [
-  { id: 'ph1', name: 'Ananya R.', rating: 5, placeholder: true,
-    body: 'Wore the howlite bracelet through a difficult month at work. I cannot explain it, but I reached for it every morning.' },
-  { id: 'ph2', name: 'Meera K.', rating: 5, placeholder: true,
-    body: 'Swati read my chart before recommending anything. That mattered more to me than the stone itself.' },
-  { id: 'ph3', name: 'Devika S.', rating: 4, placeholder: true,
-    body: 'The rudraksha is clearly genuine — you can feel the difference against the ones I bought at a market.' },
-];
+import { inr } from '../lib/api.js';
+import { useShop } from '../lib/store.jsx';
 
 function Stars({ n = 5, size = 13 }) {
   return (
@@ -23,6 +14,62 @@ function Stars({ n = 5, size = 13 }) {
           className={i <= n ? 'fill-[var(--c-accent)] text-[var(--c-accent)]' : 'text-line'} />
       ))}
     </span>
+  );
+}
+
+/**
+ * The bracelet a review is about, with a way to buy it.
+ *
+ * The whole point of a video review: someone watches a customer wearing a
+ * piece and can add that exact piece without hunting for it in the shop. The
+ * product travels with the review from the API, so this costs no extra request.
+ */
+function ProductStrip({ product, compact = false }) {
+  const { addToCart } = useShop();
+  const [added, setAdded] = useState(false);
+  const soldOut = product.stock === 0;
+
+  const add = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addToCart(product, 1);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1500);
+  };
+
+  return (
+    <div className={`flex items-center gap-2.5 ${compact ? '' : 'border-t border-line bg-surface p-2.5'}`}>
+      <Link
+        to={`/product/${product.slug}`}
+        className="flex min-w-0 flex-1 items-center gap-2.5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {product.images?.[0] ? (
+          <img src={product.images[0]} alt="" loading="lazy" decoding="async"
+            className="h-10 w-10 shrink-0 rounded-[var(--r-btn)] object-cover" />
+        ) : (
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r-btn)] bg-bg2 text-[0.7rem] text-muted">
+            {product.name?.[0] || 'S'}
+          </span>
+        )}
+        <span className="min-w-0 flex-1">
+          <span className={`block line-clamp-1 text-[0.78rem] ${compact ? 'text-white' : ''}`}>{product.name}</span>
+          <span className={`block text-[0.76rem] font-medium tnum ${compact ? 'text-white/80' : 'text-muted'}`}>
+            {inr(product.price)}
+          </span>
+        </span>
+      </Link>
+      <button
+        type="button"
+        onClick={add}
+        disabled={soldOut}
+        className="btn btn-primary btn-sm shrink-0 !px-2.5 !text-[0.7rem] disabled:opacity-45"
+      >
+        {added
+          ? <><Check size={12} strokeWidth={2.4} /> Added</>
+          : <><ShoppingBag size={12} strokeWidth={1.7} /> {soldOut ? 'Sold out' : 'Add'}</>}
+      </button>
+    </div>
   );
 }
 
@@ -38,61 +85,69 @@ function VideoCard({ review, onOpen }) {
   const selfPoster = !poster && review.video?.kind === 'file' ? review.video.embed : null;
 
   return (
-    <button
-      onClick={() => onOpen(review)}
-      className="group relative block h-full w-full overflow-hidden border border-line text-left"
+    /* Not one big <button>: the product strip below carries its own link and
+       Add to cart, and a button inside a button is invalid and unclickable. */
+    <div
+      className="group relative flex h-full flex-col overflow-hidden border border-line bg-surface text-left"
       style={{ borderRadius: 'var(--r-card)' }}
     >
-      <div className="aspect-[9/14] w-full bg-bg2">
-        {poster ? (
-          <img src={poster} alt="" loading="lazy" decoding="async"
-            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
-        ) : selfPoster ? (
-          <video src={selfPoster} muted playsInline preload="metadata" tabIndex={-1}
-            aria-hidden="true"
-            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
-        ) : (
-          <div className="h-full w-full bg-[var(--c-brand-soft)]" />
-        )}
-      </div>
-      <div aria-hidden="true" className="absolute inset-0"
-        style={{ background: 'linear-gradient(0deg, rgba(10,10,8,0.85) 0%, rgba(10,10,8,0.15) 55%, rgba(10,10,8,0) 80%)' }} />
-      <span className="absolute left-1/2 top-1/2 grid h-14 w-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-ink shadow-lg transition-transform group-hover:scale-110">
-        <Play size={20} className="ml-0.5 fill-current" />
-      </span>
-      <div className="absolute inset-x-0 bottom-0 p-4" style={{ color: '#fbf9f4' }}>
-        <Stars n={review.rating} />
-        <p className="mt-1.5 text-[0.86rem] font-medium">{review.name}</p>
-        {review.designation && <p className="text-[0.74rem] opacity-75">{review.designation}</p>}
-        {review.title && <p className="mt-0.5 line-clamp-2 text-[0.78rem] opacity-80">{review.title}</p>}
-      </div>
-    </button>
+      <button onClick={() => onOpen(review)} className="relative block w-full text-left" aria-label={`Play review from ${review.name}`}>
+        <div className="aspect-[9/14] w-full bg-bg2">
+          {poster ? (
+            <img src={poster} alt="" loading="lazy" decoding="async"
+              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+          ) : selfPoster ? (
+            <video src={selfPoster} muted playsInline preload="metadata" tabIndex={-1}
+              aria-hidden="true"
+              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+          ) : (
+            <div className="h-full w-full bg-[var(--c-brand-soft)]" />
+          )}
+        </div>
+        <span aria-hidden="true" className="absolute inset-0"
+          style={{ background: 'linear-gradient(0deg, rgba(10,10,8,0.85) 0%, rgba(10,10,8,0.15) 55%, rgba(10,10,8,0) 80%)' }} />
+        <span className="absolute left-1/2 top-1/2 grid h-14 w-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-ink shadow-lg transition-transform group-hover:scale-110">
+          <Play size={20} className="ml-0.5 fill-current" />
+        </span>
+        <span className="absolute inset-x-0 bottom-0 block p-4" style={{ color: '#fbf9f4' }}>
+          <Stars n={review.rating} />
+          <span className="mt-1.5 block text-[0.86rem] font-medium">{review.name}</span>
+          {review.designation && <span className="block text-[0.74rem] opacity-75">{review.designation}</span>}
+          {review.title && <span className="mt-0.5 line-clamp-2 block text-[0.78rem] opacity-80">{review.title}</span>}
+        </span>
+      </button>
+
+      {review.product && <ProductStrip product={review.product} />}
+    </div>
   );
 }
 
 function TextCard({ review }) {
   return (
     <figure
-      className="flex h-full flex-col border border-line bg-surface p-6"
+      className="flex h-full flex-col overflow-hidden border border-line bg-surface"
       style={{ borderRadius: 'var(--r-card)' }}
     >
-      <Quote size={20} className="text-accent opacity-40" strokeWidth={1.6} />
-      <Stars n={review.rating} />
-      {review.title && <figcaption className="mt-3 text-[0.92rem] font-medium leading-snug">{review.title}</figcaption>}
-      <blockquote className="mt-2 flex-1 text-[0.88rem] leading-relaxed text-muted">“{review.body}”</blockquote>
-      <div className="mt-5 flex items-center gap-3 border-t border-line pt-4">
-        {review.photo ? (
-          <img src={review.photo} alt="" className="h-9 w-9 rounded-full object-cover" loading="lazy" />
-        ) : (
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-bg2 text-[0.78rem] font-medium text-muted">
-            {review.name?.[0] || '·'}
-          </span>
-        )}
-        <div>
-          <p className="text-[0.84rem] font-medium">{review.name}</p>
-          {review.designation && <p className="text-[0.72rem] text-muted">{review.designation}</p>}
+      <div className="flex flex-1 flex-col p-6">
+        <Quote size={20} className="text-accent opacity-40" strokeWidth={1.6} />
+        <Stars n={review.rating} />
+        {review.title && <figcaption className="mt-3 text-[0.92rem] font-medium leading-snug">{review.title}</figcaption>}
+        <blockquote className="mt-2 flex-1 text-[0.88rem] leading-relaxed text-muted">“{review.body}”</blockquote>
+        <div className="mt-5 flex items-center gap-3 border-t border-line pt-4">
+          {review.photo ? (
+            <img src={review.photo} alt="" className="h-9 w-9 rounded-full object-cover" loading="lazy" />
+          ) : (
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-bg2 text-[0.78rem] font-medium text-muted">
+              {review.name?.[0] || '·'}
+            </span>
+          )}
+          <div>
+            <p className="text-[0.84rem] font-medium">{review.name}</p>
+            {review.designation && <p className="text-[0.72rem] text-muted">{review.designation}</p>}
+          </div>
         </div>
       </div>
+      {review.product && <ProductStrip product={review.product} />}
     </figure>
   );
 }
@@ -126,6 +181,15 @@ function Lightbox({ review, onClose }) {
             />
           )}
         </div>
+
+        {/* Buying is offered here too: this is where someone is actually
+            watching the piece being worn. */}
+        {review.product && (
+          <div className="mt-3 rounded-[var(--r-card)] border border-white/15 bg-white/10 p-2.5">
+            <ProductStrip product={review.product} compact />
+          </div>
+        )}
+
         {review.body && <p className="mt-4 text-center text-[0.88rem] leading-relaxed text-white/85">“{review.body}”</p>}
         <p className="mt-2 text-center text-[0.8rem] text-white/60">
           {review.name}{review.designation ? ` · ${review.designation}` : ''}
@@ -135,12 +199,22 @@ function Lightbox({ review, onClose }) {
   );
 }
 
+/**
+ * The customer reviews rail.
+ *
+ * Nothing is invented here. It used to fall back to three written-in
+ * testimonials when no reviews were approved, which put words in the mouths of
+ * people who never said them; the section now simply does not render until
+ * there is something real to show. Clips lead, because they are the ones that
+ * sell the piece being worn.
+ */
 export default function ReviewsRail({ reviews = [] }) {
   const scroller = useRef(null);
   const [open, setOpen] = useState(null);
 
-  const list = reviews.length ? reviews : PLACEHOLDERS;
-  const isPlaceholder = !reviews.length;
+  if (!reviews.length) return null;
+
+  const list = [...reviews].sort((a, b) => (b.video ? 1 : 0) - (a.video ? 1 : 0));
 
   const nudge = (dir) => {
     const el = scroller.current;
@@ -156,11 +230,6 @@ export default function ReviewsRail({ reviews = [] }) {
           <h2 className="mt-2 font-[var(--font-display)] text-[clamp(1.6rem,4vw,2.5rem)] leading-tight">
             Hear from our customers
           </h2>
-          {isPlaceholder && (
-            <p className="mt-2 text-[0.78rem] text-muted">
-              Example layout — real reviews appear here once approved in the admin.
-            </p>
-          )}
         </div>
         <div className="hidden shrink-0 gap-2 sm:flex">
           <button onClick={() => nudge(-1)} aria-label="Scroll left"

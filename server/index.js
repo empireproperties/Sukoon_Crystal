@@ -104,10 +104,13 @@ const customerUpload = multer({
    all but name, so it is accepted and stored with an .mp4 extension. */
 const VIDEO_TYPES = new Set(['video/mp4', 'video/webm', 'video/quicktime', 'video/x-m4v']);
 
-/* 60MB is roughly a minute of 1080p from a phone. The cap is a real product
-   decision, not just a safety valve: these are meant to be short clips, and the
-   client refuses anything longer before it starts uploading. */
-const VIDEO_MAX_BYTES = Number(process.env.REVIEW_VIDEO_MAX_MB || 60) * 1024 * 1024;
+/* 100MB is roughly a minute and a half of 1080p from a phone. The cap is a real
+   product decision, not just a safety valve: these are meant to be short clips,
+   and the client refuses anything longer before it starts uploading.
+   It was 60MB, which turned out to reject real review clips the shop already
+   had -- one of the first batch was 61.6MB. An anonymous address can still only
+   spend three uploads every thirty minutes, which is what actually bounds this. */
+const VIDEO_MAX_BYTES = Number(process.env.REVIEW_VIDEO_MAX_MB || 100) * 1024 * 1024;
 
 const videoUpload = multer({
   /* Always memory: both remote backends take a buffer, and the disk fallback
@@ -1187,7 +1190,7 @@ function normaliseVideo(raw) {
   return undefined;                       /* undefined = supplied but unusable */
 }
 
-/* An anonymous endpoint that accepts 60MB is an invitation, so each address gets
+/* An anonymous endpoint that accepts 100MB is an invitation, so each address gets
    a small budget. In memory on purpose: the API runs as a single process, and a
    limiter that needed Redis would be one more thing to keep alive for a shop
    that takes a handful of reviews a week. */
@@ -1198,7 +1201,7 @@ const recentUploads = (ip, now) =>
   (videoUploads.get(ip) || []).filter((t) => now - t < VIDEO_QUOTA.windowMs);
 
 /** Read-only. Asked before a single byte of the body is parsed, so an address
- *  that has spent its budget is turned away without our reading 60MB of it. */
+ *  that has spent its budget is turned away without our reading 100MB of it. */
 function overVideoQuota(ip) {
   const now = Date.now();
   /* Sweep while we are here; without this the map grows for the life of the
@@ -1233,8 +1236,8 @@ app.post('/api/reviews/video', (req, res) => {
      clips in a sitting -- a backlog of videos customers sent over WhatsApp. */
   const isAdmin = Boolean(verifyToken(String(req.headers.authorization || '').replace(/^Bearer /, ''), 'admin'));
 
-  /* Before multer, not after: the point of a quota on a 60MB endpoint is to
-     avoid reading the 60MB. */
+  /* Before multer, not after: the point of a quota on a 100MB endpoint is to
+     avoid reading the 100MB. */
   if (!isAdmin && overVideoQuota(req.ip)) {
     return res.status(429).json({ error: 'That is a few videos in a short time. Please try again a little later.' });
   }
@@ -1274,13 +1277,34 @@ app.post('/api/reviews/video', (req, res) => {
   });
 });
 
+/**
+ * What a review carries about the product it is for.
+ *
+ * Sent with the review so a video on the homepage can offer the bracelet it is
+ * about without the page fetching every product to find one. The shape matches
+ * what the cart stores, so the storefront can add it straight to the basket.
+ * A product that has since been deleted or hidden returns null, and the review
+ * is shown on its own rather than linking to a dead page.
+ */
+function reviewProduct(productId) {
+  if (!productId) return null;
+  const p = db.products.find((x) => x.id === productId);
+  if (!p || p.active === false) return null;
+  return {
+    id: p.id, slug: p.slug, name: p.name, price: p.price, mrp: p.mrp,
+    images: p.images?.length ? [p.images[0]] : [], stone: p.stone, stock: p.stock,
+  };
+}
+
 app.get('/api/reviews', (req, res) => {
   const { product, limit } = req.query;
   let list = (db.reviews || []).filter((r) => r.status === 'approved');
   if (product) list = list.filter((r) => r.productId === product);
   list = list.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0)
     || String(b.createdAt).localeCompare(String(a.createdAt)));
-  res.json(limit ? list.slice(0, Number(limit) || 12) : list);
+  const out = (limit ? list.slice(0, Number(limit) || 12) : list)
+    .map((r) => ({ ...r, product: reviewProduct(r.productId) }));
+  res.json(out);
 });
 
 app.get('/api/reviews/all', auth, (req, res) => {
