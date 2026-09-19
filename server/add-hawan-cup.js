@@ -20,11 +20,12 @@ const PRODUCT = {
   slug: SLUG,
   name: 'Sukoon Hawan Cup — 9 Pure Herbal Cups',
   category: 'sukoon-special',
-  /* Launch offer: one box free with one bought, so ₹200 buys two boxes of
-     nine cups. The MRP is the pair's worth, which is what makes the struck
-     price on the card true rather than decorative. */
+  /* Launch offer: every second box is free, worked out by the server in
+     priceCart. ₹200 a box, so two boxes cost ₹200 and four cost ₹400. The MRP
+     is the pair's shelf worth, which is what the free box is worth. */
   price: 200,
   mrp: 400,
+  bogo: true,
   stock: 100,
   stone: 'Cow dung, ghee, havan samagri',
   description:
@@ -60,9 +61,27 @@ async function main() {
   const store = await initDb();
   console.log(`\n  store: ${store.mode}${store.db ? ` (${store.db})` : ''}`);
 
+  /* Already created? Bring the launch terms into line rather than refusing to
+     act or making a second one. Only the terms -- the photographs, the clip
+     and whether it is live are the owner's to set, and a re-run must not
+     stamp on them. */
   const existing = (db.products || []).find((p) => p.slug === SLUG);
   if (existing) {
-    console.log(`  already there: ${existing.id} (${existing.active ? 'active' : 'inactive'}). Nothing to do.\n`);
+    const patch = {};
+    for (const key of ['price', 'mrp', 'bogo', 'returnable']) {
+      if (existing[key] !== PRODUCT[key]) patch[key] = PRODUCT[key];
+    }
+    if (!Object.keys(patch).length) {
+      console.log(`  already there and correct: ${existing.id} (${existing.active ? 'active' : 'inactive'}).\n`);
+      return;
+    }
+    if (dryRun) {
+      console.log(`  would update ${existing.id}: ${JSON.stringify(patch)}\n`);
+      return;
+    }
+    Object.assign(existing, patch);
+    await saveNow();
+    console.log(`  updated ${existing.id}: ${JSON.stringify(patch)}\n`);
     return;
   }
 

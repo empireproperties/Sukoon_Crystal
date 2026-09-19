@@ -84,15 +84,29 @@ export default function AdminProducts() {
     reload();
   };
 
-  const upload = async (file) => {
-    if (!file) return;
+  /* Takes the whole selection. A product shoot arrives as a folder, and
+     uploading it one file at a time through a dialog that closes after each
+     one is the kind of chore that ends with half the photographs missing. */
+  const upload = async (files) => {
+    const chosen = Array.from(files || []);
+    if (!chosen.length) return;
     setUploading(true);
+    let done = 0;
     try {
-      const { url } = await api.upload(file);
-      patch('images', [url, ...(editing.images || [])]);
-      toast('Photo uploaded.', 'success');
+      /* One at a time, not Promise.all: the API is on a free tier and a dozen
+         parallel uploads is how a shoot times out. Each photograph is added
+         the moment it lands, so a failure half way through keeps the ones
+         already up rather than losing the lot.
+         Appended rather than prepended, so they end up in the order they were
+         picked and the existing main photo stays the main photo. */
+      for (const file of chosen) {
+        const { url } = await api.upload(file);
+        setEditing((e) => ({ ...e, images: [...(e.images || []), url] }));
+        done++;
+      }
+      toast(done === 1 ? 'Photo uploaded.' : `${done} photos uploaded.`, 'success');
     } catch (e) {
-      toast(e.message, 'error');
+      toast(done ? `${done} uploaded, then: ${e.message}` : e.message, 'error');
     } finally {
       setUploading(false);
     }
@@ -268,7 +282,15 @@ export default function AdminProducts() {
                     <Upload size={16} className="mx-auto" />
                     <span className="mt-1 block text-[0.66rem]">{uploading ? 'Uploading' : 'Upload'}</span>
                   </span>
-                  <input type="file" accept="image/*" className="hidden" onChange={(e) => upload(e.target.files?.[0])} />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    /* Cleared afterwards so picking the same folder twice in a
+                       row still fires a change event. */
+                    onChange={(e) => { const f = e.target.files; e.target.value = ''; upload(f); }}
+                  />
                 </label>
               </div>
               <button onClick={addImageUrl} className="mt-2 text-[0.78rem] text-brand link-underline">
@@ -293,6 +315,13 @@ export default function AdminProducts() {
               onChange={(v) => patch('returnable', v)}
               label="Returns and exchanges allowed"
               hint="Turn off for anything consumable — a havan cup is lit on arrival. The product page says so before the sale, and a return raised against it is refused."
+            />
+
+            <Toggle
+              checked={Boolean(editing.bogo)}
+              onChange={(v) => patch('bogo', v)}
+              label="Buy one get one free"
+              hint="Every second unit is free. The discount is worked out on the server, so the cart, the order and the invoice cannot disagree about it."
             />
 
             <div className="grid gap-4 sm:grid-cols-2">

@@ -73,7 +73,12 @@ export default function Checkout() {
   }, [user]);
 
   const discount = applied?.discount || 0;
-  const total = subtotal + shipping - discount;
+  /* Every second unit of a buy-one-get-one line is free. Worked out here so
+     the figure on screen matches the one the server charges -- it prices the
+     cart again from the catalogue and would otherwise take less than the page
+     had promised, which reads as a bug even when it is in the buyer's favour. */
+  const bogoDiscount = cart.reduce((t, l) => t + (l.bogo ? Math.floor(l.qty / 2) * l.price : 0), 0);
+  const total = subtotal - bogoDiscount + shipping - discount;
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   /* COD means an advance paid online now and the rest to the courier. Without
@@ -113,7 +118,7 @@ export default function Checkout() {
 
   /* Once per visit to the page, and only with something in the cart. */
   useEffect(() => {
-    if (cart.length) trackInitiateCheckout(cart, subtotal + shipping);
+    if (cart.length) trackInitiateCheckout(cart, subtotal - bogoDiscount + shipping);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const settle = (created) => {
@@ -462,6 +467,9 @@ export default function Checkout() {
 
                 <dl className="mt-5 space-y-2 text-[0.88rem]">
                   <div className="flex justify-between"><dt className="text-muted">Subtotal</dt><dd className="tnum">{inr(subtotal)}</dd></div>
+                  {bogoDiscount > 0 && (
+                    <div className="flex justify-between text-ok"><dt>Buy 1 get 1 free</dt><dd className="tnum">− {inr(bogoDiscount)}</dd></div>
+                  )}
                   {discount > 0 && (
                     <div className="flex justify-between text-ok"><dt>Discount</dt><dd className="tnum">− {inr(discount)}</dd></div>
                   )}

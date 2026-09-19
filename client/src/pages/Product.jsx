@@ -398,7 +398,11 @@ export default function Product() {
                     <span className="badge badge-sale">{off}% off · save {inr(p.mrp - p.price)}</span>
                   </>
                 )}
-                <span className="w-full text-[0.76rem] text-muted">Inclusive of all taxes</span>
+                {p.bogo && <span className="badge badge-sale">Launch offer · Buy 1 get 1 free</span>}
+                <span className="w-full text-[0.76rem] text-muted">
+                  Inclusive of all taxes
+                  {p.bogo && ' · Add two to the basket and the second one is free.'}
+                </span>
               </div>
 
               {/* offers */}

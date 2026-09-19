@@ -19,6 +19,10 @@ function cartReducer(state, action) {
       return [...state, {
         productId: p.id, slug: p.slug, name: p.name, price: p.price, mrp: p.mrp,
         image: p.images?.[0] || '', stone: p.stone, qty,
+        /* Carried so the cart can show the free unit. The server works the
+           discount out again from the catalogue -- this copy is for display
+           and is never what anyone is charged on. */
+        bogo: Boolean(p.bogo),
       }];
     }
     case 'qty':

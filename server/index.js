@@ -655,24 +655,39 @@ function priceCart(items = [], couponCode = '') {
     .map((it) => {
       const p = db.products.find((x) => x.id === it.productId || x.slug === it.slug);
       if (!p) return null;
+      const qty = Math.max(1, Math.min(99, Number(it.qty) || 1));
+      /* Buy one get one free: every second unit of the line costs nothing.
+         Read from the catalogue flag, never from the browser, for the same
+         reason the price is -- a cart that could name its own free units is
+         a cart that could take the whole shop. */
+      const free = p.bogo ? Math.floor(qty / 2) : 0;
       return {
         productId: p.id, name: p.name, slug: p.slug, price: p.price,
-        qty: Math.max(1, Math.min(99, Number(it.qty) || 1)),
+        qty,
+        bogo: Boolean(p.bogo),
+        free,
         image: p.images?.[0] || '',
       };
     })
     .filter(Boolean);
 
   const subtotal = priced.reduce((t, it) => t + it.price * it.qty, 0);
+  const bogoDiscount = priced.reduce((t, it) => t + it.price * it.free, 0);
+
+  /* Shipping is still decided by the shelf value of the basket, the same as it
+     is with a coupon: the free unit is a gift, not a smaller order.
+     The coupon, though, is evaluated on what is actually being charged --
+     discounting the shelf price of something already given away would take the
+     same rupees off twice. */
   const shipping = subtotal >= 999 ? 0 : 60;
-  const applied = evaluateCoupon(couponCode, subtotal);
+  const applied = evaluateCoupon(couponCode, subtotal - bogoDiscount);
   const discount = applied.ok ? applied.discount : 0;
 
   return {
-    priced, subtotal, shipping, discount,
+    priced, subtotal, shipping, discount, bogoDiscount,
     coupon: applied.coupon || null,
     couponError: applied.error,
-    total: subtotal + shipping - discount,
+    total: subtotal - bogoDiscount + shipping - discount,
   };
 }
 
@@ -767,7 +782,7 @@ function nextOrderNumber() {
   return `SKN${highest + 1}`;
 }
 
-function buildOrder({ priced, subtotal, shipping, discount, total, coupon }, customer, payment, extra = {}) {
+function buildOrder({ priced, subtotal, shipping, discount, bogoDiscount = 0, total, coupon }, customer, payment, extra = {}) {
   extra = { ...extra, coupon: coupon || null };
   const at = new Date().toISOString();
   return {
@@ -775,7 +790,7 @@ function buildOrder({ priced, subtotal, shipping, discount, total, coupon }, cus
     number: nextOrderNumber(),
     createdAt: at,
     status: 'placed',
-    customer, items: priced, subtotal, shipping, discount, total,
+    customer, items: priced, subtotal, shipping, discount, bogoDiscount, total,
     coupon: extra.coupon || null,
     payment,
     courier: 'Delhivery',

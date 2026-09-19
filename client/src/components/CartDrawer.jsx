@@ -9,6 +9,9 @@ import ProductImage from './ProductImage.jsx';
 
 export default function CartDrawer() {
   const { cart, drawerOpen, setDrawerOpen, setQty, removeFromCart, subtotal, shipping, count } = useShop();
+  /* Every second unit of a buy-one-get-one line is free. Display only: the
+     server prices the cart again from the catalogue at checkout. */
+  const bogoDiscount = cart.reduce((t, l) => t + (l.bogo ? Math.floor(l.qty / 2) * l.price : 0), 0);
   const toFree = Math.max(0, 999 - subtotal);
   const progress = Math.min(100, (subtotal / 999) * 100);
 
@@ -135,12 +138,20 @@ export default function CartDrawer() {
               <footer className="space-y-4 border-t border-line bg-bg2 px-5 py-5">
                 <dl className="space-y-1.5 text-[0.88rem]">
                   <div className="flex justify-between"><dt className="text-muted">Subtotal</dt><dd className="tnum">{inr(subtotal)}</dd></div>
+                  {/* Shown the moment the second one lands in the basket, not
+                      discovered at checkout. The server works the same figure
+                      out again from the catalogue before anyone is charged. */}
+                  {bogoDiscount > 0 && (
+                    <div className="flex justify-between text-ok">
+                      <dt>Buy 1 get 1 free</dt><dd className="tnum">− {inr(bogoDiscount)}</dd>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <dt className="text-muted">Shipping</dt>
                     <dd className={shipping === 0 ? 'text-ok' : 'tnum'}>{shipping === 0 ? 'Free' : inr(shipping)}</dd>
                   </div>
                   <div className="flex justify-between border-t border-line pt-2 text-[1rem] font-semibold">
-                    <dt>Total</dt><dd className="tnum">{inr(subtotal + shipping)}</dd>
+                    <dt>Total</dt><dd className="tnum">{inr(subtotal - bogoDiscount + shipping)}</dd>
                   </div>
                 </dl>
 
