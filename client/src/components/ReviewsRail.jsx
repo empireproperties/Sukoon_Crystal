@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Star, ChevronLeft, ChevronRight, Play, Quote, ShoppingBag, Check } from 'lucide-react';
+import { Star, ChevronLeft, ChevronRight, Play, Quote, ShoppingBag, Check, Heart } from 'lucide-react';
 
 import { inr } from '../lib/api.js';
 import { useShop } from '../lib/store.jsx';
@@ -38,19 +38,19 @@ function ProductStrip({ product }) {
   };
 
   return (
-    <div className="flex items-center gap-2 border-t border-line p-2">
-      <Link to={`/product/${product.slug}`} className="flex min-w-0 flex-1 items-center gap-2">
+    <div className="flex items-center gap-2.5 border-t border-line p-2.5">
+      <Link to={`/product/${product.slug}`} className="flex min-w-0 flex-1 items-center gap-2.5">
         {product.images?.[0] ? (
           <img src={product.images[0]} alt="" loading="lazy" decoding="async"
-            className="h-8 w-8 shrink-0 rounded-md object-cover" />
+            className="h-10 w-10 shrink-0 rounded-lg object-cover" />
         ) : (
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-bg2 text-[0.68rem] text-muted">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-bg2 text-[0.7rem] text-muted">
             {product.name?.[0] || 'S'}
           </span>
         )}
         <span className="min-w-0 flex-1 leading-tight">
-          <span className="block truncate text-[0.72rem]">{product.name}</span>
-          <span className="block text-[0.74rem] font-semibold tnum">{inr(product.price)}</span>
+          <span className="block truncate text-[0.76rem]">{product.name}</span>
+          <span className="block text-[0.82rem] font-semibold tnum">{inr(product.price)}</span>
         </span>
       </Link>
       <button
@@ -83,8 +83,8 @@ function VideoCard({ review }) {
   const file = review.video?.kind === 'file';
 
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[var(--shadow-card)] transition-shadow duration-300 hover:shadow-[var(--shadow-pop)]">
-      <div className="relative aspect-[3/4] w-full overflow-hidden bg-bg2">
+    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[var(--shadow-card)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 hover:border-brand/25 hover:shadow-[var(--shadow-pop)]">
+      <div className="relative aspect-[4/5] w-full overflow-hidden bg-bg2">
         {playing ? (
           file ? (
             <video src={review.video.embed} controls autoPlay playsInline
@@ -118,8 +118,8 @@ function VideoCard({ review }) {
             <span aria-hidden="true" className="absolute inset-0"
               style={{ background: 'linear-gradient(0deg, rgba(10,10,8,0.72) 0%, rgba(10,10,8,0.1) 50%, rgba(10,10,8,0) 75%)' }} />
 
-            <span className="absolute left-1/2 top-1/2 grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/92 text-ink shadow-md transition-transform duration-300 group-hover/play:scale-110">
-              <Play size={16} className="ml-0.5 fill-current" />
+            <span className="absolute left-1/2 top-1/2 grid h-14 w-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/95 text-ink shadow-[0_6px_20px_-6px_rgba(0,0,0,0.5)] ring-1 ring-white/70 transition-transform duration-300 group-hover/play:scale-110">
+              <Play size={19} className="ml-0.5 fill-current" />
             </span>
 
             {/* A clip often carries no name and no stars, and an empty line
@@ -141,7 +141,7 @@ function VideoCard({ review }) {
 
 function TextCard({ review }) {
   return (
-    <figure className="flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[var(--shadow-card)] transition-shadow duration-300 hover:shadow-[var(--shadow-pop)]">
+    <figure className="flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[var(--shadow-card)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 hover:border-brand/25 hover:shadow-[var(--shadow-pop)]">
       <div className="flex flex-1 flex-col p-4">
         <Quote size={18} className="text-accent opacity-40" strokeWidth={1.6} />
         {review.rating > 0 && <span className="mt-1.5"><Stars n={review.rating} /></span>}
@@ -192,20 +192,29 @@ export default function ReviewsRail({ reviews = [] }) {
 
   return (
     <section className="py-12 sm:py-16">
-      <div className="wrap mb-6 flex items-end justify-between gap-4">
-        <div>
-          <p className="text-[0.68rem] uppercase tracking-[0.24em] text-muted">In their words</p>
-          <h2 className="mt-2 font-[var(--font-display)] text-[clamp(1.5rem,3.4vw,2.2rem)] leading-tight">
-            Hear from our customers
-          </h2>
-        </div>
-        <div className="hidden shrink-0 gap-2 sm:flex">
+      {/* Centred, with the heart sitting in a hairline rule. The arrows used
+          to share this row, which pulled the title off-centre on a laptop and
+          left it stranded beside two grey circles. They sit against the right
+          edge now, out of the title's way. */}
+      <div className="wrap relative mb-7 text-center">
+        <p className="text-[0.68rem] uppercase tracking-[0.24em] text-muted">In their words</p>
+        <h2 className="mt-2 font-[var(--font-display)] text-[clamp(1.5rem,3.4vw,2.2rem)] leading-tight">
+          Hear from our customers
+        </h2>
+
+        <span aria-hidden="true" className="mt-3 flex items-center justify-center gap-3">
+          <span className="h-px w-12 bg-gradient-to-r from-transparent to-line sm:w-20" />
+          <Heart size={14} className="fill-[var(--c-accent)] text-[var(--c-accent)]" />
+          <span className="h-px w-12 bg-gradient-to-l from-transparent to-line sm:w-20" />
+        </span>
+
+        <div className="absolute bottom-0 right-0 hidden gap-2 sm:flex">
           <button onClick={() => nudge(-1)} aria-label="Scroll left"
-            className="grid h-9 w-9 place-items-center rounded-full border border-line transition hover:bg-bg2">
+            className="grid h-9 w-9 place-items-center rounded-full border border-line bg-surface transition hover:border-brand hover:text-brand">
             <ChevronLeft size={16} />
           </button>
           <button onClick={() => nudge(1)} aria-label="Scroll right"
-            className="grid h-9 w-9 place-items-center rounded-full border border-line transition hover:bg-bg2">
+            className="grid h-9 w-9 place-items-center rounded-full border border-line bg-surface transition hover:border-brand hover:text-brand">
             <ChevronRight size={16} />
           </button>
         </div>
@@ -230,7 +239,7 @@ export default function ReviewsRail({ reviews = [] }) {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-40px' }}
             transition={{ duration: 0.35, delay: Math.min(i, 4) * 0.05 }}
-            className="w-[48vw] max-w-[210px] shrink-0 snap-start sm:w-[210px]"
+            className="w-[62vw] max-w-[260px] shrink-0 snap-start sm:w-[260px]"
           >
             {r.video ? <VideoCard review={r} /> : <TextCard review={r} />}
           </motion.div>
