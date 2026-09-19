@@ -300,7 +300,8 @@ export default function AdminReviews() {
         <div className="space-y-3">
           {list.map((r) => (
             <motion.div key={r.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-              className="border border-line bg-surface p-5" style={{ borderRadius: 'var(--r-card)' }}>
+              className="border border-line bg-surface p-5 shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-pop)]"
+              style={{ borderRadius: 'var(--r-card)' }}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2.5">
@@ -311,10 +312,12 @@ export default function AdminReviews() {
                     </span>
                     {r.designation && <span className="text-[0.76rem] text-muted">{r.designation}</span>}
                     {r.rating > 0 && <Stars n={r.rating} />}
+                    {/* Which bucket it sits in is not a decision anyone makes
+                        from this screen, so the chip says what it is, not
+                        where it is kept. */}
                     {r.video && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-bg2 px-2 py-0.5 text-[0.68rem] text-muted">
-                        <Play size={9} className="fill-current" />
-                        {r.video.kind === 'file' ? r.video.storage || 'video' : r.video.kind}
+                        <Play size={9} className="fill-current" /> Video
                       </span>
                     )}
                     {r.featured && (
@@ -327,41 +330,36 @@ export default function AdminReviews() {
                     {dateLabel(r.createdAt)}{r.source === 'admin' ? ' · added by you' : ''}
                   </p>
                 </div>
-                <span className={`shrink-0 rounded-full px-2.5 py-1 text-[0.7rem] ${
+                <span className={`shrink-0 rounded-full px-2.5 py-1 text-[0.7rem] font-medium ${
                   r.status === 'approved' ? 'bg-brand/10 text-brand'
                   : r.status === 'rejected' ? 'bg-sale/10 text-sale' : 'bg-bg2 text-muted'}`}>
-                  {r.status}
+                  {r.status === 'approved' ? 'Live on the site'
+                    : r.status === 'rejected' ? 'Rejected' : 'Awaiting review'}
                 </span>
               </div>
 
               {r.title && <p className="mt-3 text-[0.9rem] font-medium">{r.title}</p>}
-              <p className="mt-1.5 text-[0.88rem] leading-relaxed text-muted">{r.body}</p>
+              {r.body && <p className="mt-1.5 text-[0.88rem] leading-relaxed text-muted">{r.body}</p>}
 
+              {/* The clip, at the shape it was filmed in. The storage backend
+                  and the object URL used to be printed beside it: neither is
+                  something anyone decides from this screen, and a wrapped
+                  90-character URL was the loudest thing on the card. */}
               {r.video?.kind === 'file' ? (
-                <div className="mt-3 flex flex-wrap items-start gap-3">
-                  <video
-                    src={r.video.embed}
-                    controls
-                    playsInline
-                    preload="metadata"
-                    className="max-h-[260px] w-[180px] rounded bg-black object-contain"
-                  />
-                  <div className="min-w-0 flex-1 text-[0.74rem] text-muted">
-                    <p>
-                      Stored on <strong className="text-ink">{r.video.storage || 'unknown'}</strong>.
-                      {r.video.storage === 'external' && ' Hosted by someone else, so it can change or vanish.'}
-                      {r.video.storage === 'local' && ' On the API server\u2019s own disk, which a redeploy wipes.'}
-                    </p>
-                    <a href={r.video.url} target="_blank" rel="noreferrer noopener"
-                      className="mt-1 inline-block break-all text-accent underline underline-offset-2">
-                      {r.video.url}
-                    </a>
-                  </div>
-                </div>
+                <video
+                  src={r.video.embed}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  className="mt-3 h-[230px] w-full bg-black object-cover sm:w-[150px]"
+                  style={{ borderRadius: 'var(--r-btn)' }}
+                />
               ) : r.video ? (
+                /* YouTube and Instagram cannot play inline here, so this is the
+                   one case that still needs a way out to the clip. */
                 <a href={r.video.url} target="_blank" rel="noreferrer noopener"
-                  className="mt-2 inline-block break-all text-[0.76rem] text-accent underline underline-offset-2">
-                  {r.video.url}
+                  className="btn btn-sm mt-3 border border-line capitalize">
+                  <Play size={12} className="fill-current" /> Watch on {r.video.kind}
                 </a>
               ) : null}
 
