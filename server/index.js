@@ -1951,7 +1951,17 @@ app.get('/sitemap.xml', (_req, res) => {
   res.set('Content-Type', 'application/xml; charset=utf-8').send(sitemapXml());
 });
 
-app.get('/api/health', (_req, res) => res.json({ ok: true, products: db.products.length }));
+/* `video` reports which backend a review clip would be stored on. It is here
+   because the failure it diagnoses is invisible otherwise: with the R2_*
+   variables missing on the host, uploads quietly fall back to Cloudinary, and
+   the only clue is an error message in Cloudinary's wording. Names a backend,
+   never a credential. */
+app.get('/api/health', (_req, res) => res.json({
+  ok: true,
+  products: db.products.length,
+  video: r2.configured ? 'r2' : cloud.configured ? 'cloudinary' : 'local-disk',
+  maxVideoMb: Math.round(VIDEO_MAX_BYTES / (1024 * 1024)),
+}));
 
 /* Serve the built SPA when it exists (single-command demo deploy). */
 const DIST = path.join(__dirname, '..', 'client', 'dist');
