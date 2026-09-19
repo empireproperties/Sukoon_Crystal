@@ -116,18 +116,19 @@ export default function ProductReviews({ product }) {
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [product.id]);
 
   /* The distribution is computed from the reviews actually shown, so the bars
-     can never disagree with the list beneath them. */
-  const split = useMemo(() => {
-    const list = reviews || [];
-    return [5, 4, 3, 2, 1].map((stars) => {
-      const n = list.filter((r) => r.rating === stars).length;
-      return { stars, n, pct: list.length ? Math.round((n / list.length) * 100) : 0 };
-    });
-  }, [reviews]);
+     can never disagree with the list beneath them. Only rated ones, though: a
+     video review needs no stars, and counting it as nought would both flatten
+     the average and leave a percentage that belongs to no bar. */
+  const rated = useMemo(() => (reviews || []).filter((r) => Number(r.rating) >= 1), [reviews]);
+
+  const split = useMemo(() => [5, 4, 3, 2, 1].map((stars) => {
+    const n = rated.filter((r) => r.rating === stars).length;
+    return { stars, n, pct: rated.length ? Math.round((n / rated.length) * 100) : 0 };
+  }), [rated]);
 
   const count = reviews?.length ?? 0;
-  const average = count
-    ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / count) * 10) / 10
+  const average = rated.length
+    ? Math.round((rated.reduce((s, r) => s + Number(r.rating), 0) / rated.length) * 10) / 10
     : 0;
 
   return (
@@ -192,14 +193,14 @@ export default function ProductReviews({ product }) {
             {reviews.map((r) => (
               <li key={r.id} className="border-b border-line pb-5 last:border-0">
                 <div className="flex flex-wrap items-center gap-3">
-                  <Stars rating={r.rating} size={12} />
-                  <span className="text-[0.88rem] font-medium">{r.name}</span>
+                  {Number(r.rating) >= 1 && <Stars rating={r.rating} size={12} />}
+                  {r.name && <span className="text-[0.88rem] font-medium">{r.name}</span>}
                   {r.designation && <span className="text-[0.76rem] text-muted">· {r.designation}</span>}
                   <span className="text-[0.76rem] text-muted">{dateLabel(r.createdAt)}</span>
                   <span className="badge badge-ok ml-auto">Verified</span>
                 </div>
                 {r.title && <p className="mt-2 text-[0.9rem] font-medium">{r.title}</p>}
-                <p className="mt-1.5 text-[0.9rem] leading-relaxed text-muted">{r.body}</p>
+                {r.body && <p className="mt-1.5 text-[0.9rem] leading-relaxed text-muted">{r.body}</p>}
                 {r.video?.kind === 'file' ? (
                   <video
                     src={r.video.embed}

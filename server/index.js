@@ -1381,24 +1381,32 @@ app.post('/api/reviews', (req, res) => {
 app.post('/api/reviews/admin', auth, (req, res) => {
   const { name, designation, rating, title, body, productId, photo, video, featured } = req.body || {};
 
-  if (!String(name || '').trim()) return res.status(400).json({ error: 'Whose review is this? Add a name.' });
-  if (!String(body || '').trim()) return res.status(400).json({ error: 'Add the words of the review.' });
-
-  const stars = Number(rating);
-  if (!Number.isFinite(stars) || stars < 1 || stars > 5) {
-    return res.status(400).json({ error: 'Give it a rating between 1 and 5.' });
-  }
-
   const media = normaliseVideo(video);
   if (media === undefined) return res.status(400).json({ error: 'That video link cannot be embedded.' });
+
+  /* A clip is the review. Someone holding the bracelet to the camera has
+     already said everything a name, a paragraph and five stars were standing
+     in for, so a video review needs none of them -- asking for them only got
+     them invented. A review with no video still does: without words or a name
+     there would be nothing on the card at all. */
+  const stars = Number(rating);
+  const rated = Number.isFinite(stars) && stars >= 1 && stars <= 5;
+
+  if (!media) {
+    if (!String(name || '').trim()) return res.status(400).json({ error: 'Whose review is this? Add a name.' });
+    if (!String(body || '').trim()) return res.status(400).json({ error: 'Add the words of the review.' });
+    if (!rated) return res.status(400).json({ error: 'Give it a rating between 1 and 5.' });
+  }
 
   const review = {
     id: uid('rev'),
     name: String(name).trim().slice(0, 60),
     designation: String(designation || '').trim().slice(0, 80),
-    rating: Math.round(stars),
+    /* null, not 0: "no rating given" and "nought out of five" are different
+       things, and the storefront shows stars only for a real one. */
+    rating: rated ? Math.round(stars) : null,
     title: String(title || '').trim().slice(0, 120),
-    body: String(body).trim().slice(0, 1500),
+    body: String(body || '').trim().slice(0, 1500),
     productId: productId || null,
     photo: String(photo || '') || null,
     video: media,
@@ -1456,7 +1464,12 @@ app.delete('/api/reviews/:id', auth, (req, res) => {
 function syncProductRating(productId) {
   if (!productId) return;
   const mine = (db.reviews || []).filter((r) => r.productId === productId && r.status === 'approved');
-  const avg = mine.length ? mine.reduce((s, r) => s + (r.rating || 0), 0) / mine.length : 0;
+  /* Only reviews that actually carry a rating are averaged. A video review
+     needs no stars, and counting its missing rating as nought would drop a
+     well-reviewed piece from 4.8 to 3.2 for the crime of being on film.
+     The review count still counts every one of them -- they are all reviews. */
+  const rated = mine.filter((r) => Number(r.rating) >= 1);
+  const avg = rated.length ? rated.reduce((s, r) => s + Number(r.rating), 0) / rated.length : 0;
   upsert('products', productId, { rating: Math.round(avg * 10) / 10, reviews: mine.length });
 }
 

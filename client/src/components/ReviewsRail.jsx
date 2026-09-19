@@ -109,9 +109,11 @@ function VideoCard({ review, onOpen }) {
         <span className="absolute left-1/2 top-1/2 grid h-14 w-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-ink shadow-lg transition-transform group-hover:scale-110">
           <Play size={20} className="ml-0.5 fill-current" />
         </span>
+        {/* A video review often carries no name and no stars -- the clip is the
+            review. Each line appears only if there is something to put in it. */}
         <span className="absolute inset-x-0 bottom-0 block p-4" style={{ color: '#fbf9f4' }}>
-          <Stars n={review.rating} />
-          <span className="mt-1.5 block text-[0.86rem] font-medium">{review.name}</span>
+          {review.rating > 0 && <Stars n={review.rating} />}
+          {review.name && <span className="mt-1.5 block text-[0.86rem] font-medium">{review.name}</span>}
           {review.designation && <span className="block text-[0.74rem] opacity-75">{review.designation}</span>}
           {review.title && <span className="mt-0.5 line-clamp-2 block text-[0.78rem] opacity-80">{review.title}</span>}
         </span>
@@ -130,7 +132,7 @@ function TextCard({ review }) {
     >
       <div className="flex flex-1 flex-col p-6">
         <Quote size={20} className="text-accent opacity-40" strokeWidth={1.6} />
-        <Stars n={review.rating} />
+        {review.rating > 0 && <Stars n={review.rating} />}
         {review.title && <figcaption className="mt-3 text-[0.92rem] font-medium leading-snug">{review.title}</figcaption>}
         <blockquote className="mt-2 flex-1 text-[0.88rem] leading-relaxed text-muted">“{review.body}”</blockquote>
         <div className="mt-5 flex items-center gap-3 border-t border-line pt-4">
@@ -191,9 +193,11 @@ function Lightbox({ review, onClose }) {
         )}
 
         {review.body && <p className="mt-4 text-center text-[0.88rem] leading-relaxed text-white/85">“{review.body}”</p>}
-        <p className="mt-2 text-center text-[0.8rem] text-white/60">
-          {review.name}{review.designation ? ` · ${review.designation}` : ''}
-        </p>
+        {review.name && (
+          <p className="mt-2 text-center text-[0.8rem] text-white/60">
+            {review.name}{review.designation ? ` · ${review.designation}` : ''}
+          </p>
+        )}
       </div>
     </div>
   );

@@ -25,7 +25,9 @@ function Stars({ n }) {
   );
 }
 
-const BLANK = { name: '', designation: '', rating: 5, title: '', body: '', video: '', productId: '', featured: false };
+/* rating 0 means "none given". A video review does not need stars, and
+   defaulting to five put a rating on every clip that nobody actually gave. */
+const BLANK = { name: '', designation: '', rating: 0, title: '', body: '', video: '', productId: '', featured: false };
 
 /**
  * The clips already sitting in the storage bucket.
@@ -158,8 +160,10 @@ function AddReview({ onAdded, products = [] }) {
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="field-label" htmlFor="ar-name">Name</label>
-          <input id="ar-name" className="field" value={form.name} onChange={set('name')} required maxLength={60} />
+          <label className="field-label" htmlFor="ar-name">
+            Name <span className="text-muted">(optional with a video)</span>
+          </label>
+          <input id="ar-name" className="field" value={form.name} onChange={set('name')} maxLength={60} />
         </div>
         <div>
           <label className="field-label" htmlFor="ar-role">
@@ -173,14 +177,20 @@ function AddReview({ onAdded, products = [] }) {
       </div>
 
       <div className="mt-3">
-        <span className="field-label">Rating</span>
-        <div className="flex gap-1 pt-1">
+        <span className="field-label">Rating <span className="text-muted">(optional with a video)</span></span>
+        <div className="flex items-center gap-1 pt-1">
           {[1, 2, 3, 4, 5].map((n) => (
             <button key={n} type="button" onClick={() => setForm((f) => ({ ...f, rating: n }))}
               aria-label={`${n} star${n > 1 ? 's' : ''}`}>
               <Star size={22} strokeWidth={1.6} className={n <= form.rating ? 'fill-accent text-accent' : 'text-line'} />
             </button>
           ))}
+          {form.rating > 0 && (
+            <button type="button" onClick={() => setForm((f) => ({ ...f, rating: 0 }))}
+              className="ml-2 text-[0.74rem] text-muted underline underline-offset-2 hover:text-ink">
+              Clear
+            </button>
+          )}
         </div>
       </div>
 
@@ -190,8 +200,10 @@ function AddReview({ onAdded, products = [] }) {
       </div>
 
       <div className="mt-3">
-        <label className="field-label" htmlFor="ar-body">What they said</label>
-        <textarea id="ar-body" rows={3} className="field" value={form.body} onChange={set('body')} required maxLength={1500} />
+        <label className="field-label" htmlFor="ar-body">
+          What they said <span className="text-muted">(optional with a video)</span>
+        </label>
+        <textarea id="ar-body" rows={3} className="field" value={form.body} onChange={set('body')} maxLength={1500} />
       </div>
 
       {/* The piece this review is about. Attaching it puts the bracelet, its
@@ -309,9 +321,13 @@ export default function AdminReviews() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2.5">
-                    <span className="text-[0.92rem] font-medium">{r.name}</span>
+                    {/* A video review can have neither name nor stars. It still
+                        needs a heading in this list to be found and acted on. */}
+                    <span className={`text-[0.92rem] font-medium ${r.name ? '' : 'text-muted'}`}>
+                      {r.name || 'Video review'}
+                    </span>
                     {r.designation && <span className="text-[0.76rem] text-muted">{r.designation}</span>}
-                    <Stars n={r.rating} />
+                    {r.rating > 0 && <Stars n={r.rating} />}
                     {r.video && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-bg2 px-2 py-0.5 text-[0.68rem] text-muted">
                         <Play size={9} className="fill-current" />
