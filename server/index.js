@@ -83,7 +83,11 @@ const upload = multer({
         destination: UPLOADS,
         filename: (_r, file, cb) => cb(null, `${Date.now()}-${file.originalname.replace(/[^\w.-]/g, '_')}`),
       }),
-  limits: { fileSize: 8 * 1024 * 1024 },
+  /* 15MB. It was 8, which a product shoot straight off a camera clears
+     without trying -- and the rejection reads as "nothing happened" from the
+     admin's side. Cloudinary resizes on delivery, so the stored original
+     being large costs nothing per view. */
+  limits: { fileSize: 15 * 1024 * 1024 },
   fileFilter: imagesOnly,
 });
 
@@ -2024,8 +2028,14 @@ app.get('/sitemap.xml', (_req, res) => {
 app.get('/api/health', (_req, res) => res.json({
   ok: true,
   products: db.products.length,
+  /* `images` matters for the same reason `video` does: without Cloudinary
+     credentials, product photographs are written to the container's own disk,
+     which every redeploy wipes -- so they upload, appear to work, and are gone
+     by the next morning. Names a backend, never a credential. */
+  images: cloud.configured ? 'cloudinary' : 'local-disk',
   video: r2.configured ? 'r2' : cloud.configured ? 'cloudinary' : 'local-disk',
   maxVideoMb: Math.round(VIDEO_MAX_BYTES / (1024 * 1024)),
+  maxImageMb: 15,
 }));
 
 /* Serve the built SPA when it exists (single-command demo deploy). */

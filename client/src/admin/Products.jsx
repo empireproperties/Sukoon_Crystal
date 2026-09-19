@@ -287,9 +287,18 @@ export default function AdminProducts() {
                     accept="image/*"
                     multiple
                     className="hidden"
-                    /* Cleared afterwards so picking the same folder twice in a
-                       row still fires a change event. */
-                    onChange={(e) => { const f = e.target.files; e.target.value = ''; upload(f); }}
+                    /* Copied into a real array BEFORE the input is cleared.
+                       `e.target.files` is a live FileList belonging to the
+                       input, so clearing the value empties the very list you
+                       are holding -- which uploaded precisely nothing, and
+                       said nothing about it either.
+                       The input is cleared so picking the same folder twice in
+                       a row still fires a change event. */
+                    onChange={(e) => {
+                      const chosen = Array.from(e.target.files || []);
+                      e.target.value = '';
+                      upload(chosen);
+                    }}
                   />
                 </label>
               </div>
