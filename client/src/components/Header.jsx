@@ -20,7 +20,11 @@ export const NAV_LINKS = [
   { to: '/shop/rudraksha', label: 'Rudraksha' },
   { to: '/shop/sukoon-special', label: 'Sukoon Special' },
   { to: '/about', label: 'About', from: 'hidden xl:inline-flex' },
-  { to: '/contact', label: 'Contact', from: 'hidden xl:inline-flex' },
+  /* Contact stood here. A phone number and an address are in the footer on
+     every page, while a consultation is the thing the shop actually wants
+     asked for -- so the bar spends its last slot on that instead, and earns
+     its place one breakpoint earlier than About did. */
+  { to: '/book', label: 'Book Consultation', from: 'hidden lg:inline-flex' },
 ];
 
 /* Kept for anywhere that wants the type without the mark. */

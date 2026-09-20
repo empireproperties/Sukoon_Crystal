@@ -24,7 +24,7 @@ export default function CategoryGrid({ categories = [], products = [] }) {
      owner has uploaded artwork for it. */
   const imageFor = (slug) =>
     categories.find((c) => c.slug === slug)?.image
-    || products.find((p) => p.category === slug && p.images?.length)?.images[0]
+    || products.find((p) => (p.categories?.length ? p.categories : [p.category]).includes(slug) && p.images?.length)?.images[0]
     || '';
 
   const ordered = CATEGORY_ORDER

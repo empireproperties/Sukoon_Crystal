@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Plus, Search, Package, Upload, Pencil, LayoutGrid, List, ImageOff, Eye, EyeOff, IndianRupee, TrendingUp,
+  ChevronUp, ChevronDown,
 } from 'lucide-react';
 
 import { api, inr } from '../lib/api.js';
@@ -20,7 +21,8 @@ const CATEGORIES = [
 const ELEMENTS = ['Fire', 'Earth', 'Air', 'Water', 'Aether'];
 
 const blank = () => ({
-  name: '', category: 'wellness-bracelets', price: 999, mrp: 1399, stock: 20,
+  name: '', category: 'wellness-bracelets', categories: ['wellness-bracelets'], position: null,
+  price: 999, mrp: 1399, stock: 20,
   stone: '', description: '', benefits: [], chakra: 'Heart', element: 'Earth',
   zodiac: [], images: [], video: '', featured: false, bestseller: false, active: true,
   /* Delivery follows the shop setting unless this product says otherwise. */
@@ -38,13 +40,14 @@ export default function AdminProducts() {
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [reordering, setReordering] = useState(false);
 
   const { data: products = [], loading, reload } = useAsync(() => api.products({ all: '1' }), []);
 
   const list = useMemo(() => {
     const t = q.toLowerCase();
     return (products || [])
-      .filter((p) => cat === 'all' || p.category === cat)
+      .filter((p) => cat === 'all' || (p.categories?.length ? p.categories : [p.category]).includes(cat))
       .filter((p) => !t || `${p.name} ${p.stone} ${p.sku}`.toLowerCase().includes(t));
   }, [products, q, cat]);
 
@@ -84,6 +87,27 @@ export default function AdminProducts() {
     toast('Product deleted.', 'success');
     setEditing(null);
     reload();
+  };
+
+  /* Moves a product one place in the shop's order.
+     The whole displayed order is sent rather than the two ids that swapped:
+     most products have never been given a position, and a swap between two of
+     those would be a swap between two nothings. Sending the list the admin is
+     looking at makes the order on screen the order that is saved. */
+  const move = async (index, dir) => {
+    const to = index + dir;
+    if (to < 0 || to >= list.length) return;
+    const next = [...list];
+    [next[index], next[to]] = [next[to], next[index]];
+    setReordering(true);
+    try {
+      await api.reorderProducts(next.map((p) => p.id));
+      await reload();
+    } catch (e) {
+      toast(e.message, 'error');
+    } finally {
+      setReordering(false);
+    }
   };
 
   /* Takes the whole selection. A product shoot arrives as a folder, and
@@ -209,14 +233,36 @@ export default function AdminProducts() {
             <table className="w-full min-w-[720px]">
               <thead>
                 <tr className="border-b border-line bg-bg2 text-left text-[0.72rem] font-medium text-muted">
-                  {['Product', 'Collection', 'Price', 'Stock', 'Sold', 'Status', ''].map((h) => (
+                  {['Order', 'Product', 'Collection', 'Price', 'Stock', 'Sold', 'Status', ''].map((h) => (
                     <th key={h} className="px-5 py-3">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
-                {list.map((p) => (
+                {list.map((p, i) => (
                   <tr key={p.id} className="table-row cursor-pointer" onClick={() => setEditing({ ...p })}>
+                    {/* The shop's running order. `stopPropagation` because the
+                        whole row opens the editor. */}
+                    <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex flex-col gap-1">
+                        <button
+                          onClick={() => move(i, -1)}
+                          disabled={i === 0 || reordering}
+                          aria-label="Move up"
+                          className="grid h-6 w-6 place-items-center rounded border border-line text-muted transition-colors hover:border-brand hover:text-brand disabled:opacity-30"
+                        >
+                          <ChevronUp size={12} />
+                        </button>
+                        <button
+                          onClick={() => move(i, 1)}
+                          disabled={i === list.length - 1 || reordering}
+                          aria-label="Move down"
+                          className="grid h-6 w-6 place-items-center rounded border border-line text-muted transition-colors hover:border-brand hover:text-brand disabled:opacity-30"
+                        >
+                          <ChevronDown size={12} />
+                        </button>
+                      </div>
+                    </td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
                         <ProductImage product={p} className="h-11 w-11 shrink-0" imgClassName="rounded-[var(--r-btn)]" />
@@ -226,7 +272,9 @@ export default function AdminProducts() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-[0.8rem] capitalize text-muted">{p.category.replace(/-/g, ' ')}</td>
+                    <td className="px-5 py-3 text-[0.8rem] capitalize text-muted">
+                      {(p.categories?.length ? p.categories : [p.category]).filter(Boolean).map((c) => c.replace(/-/g, ' ')).join(', ')}
+                    </td>
                     <td className="px-5 py-3 text-[0.86rem] font-medium tnum">{inr(p.price)}</td>
                     <td className={`px-5 py-3 text-[0.86rem] tnum ${p.stock <= 8 ? 'text-sale' : ''}`}>{p.stock}</td>
                     <td className="px-5 py-3 text-[0.86rem] text-muted tnum">{p.sold}</td>
@@ -363,10 +411,33 @@ export default function AdminProducts() {
               <Field label="Product name" className="sm:col-span-2">
                 <input value={editing.name} onChange={(e) => patch('name', e.target.value)} className="field" placeholder="Money Magnet Bracelet" />
               </Field>
-              <Field label="Collection">
-                <select value={editing.category} onChange={(e) => patch('category', e.target.value)} className="field">
-                  {CATEGORIES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
+              {/* A piece can belong to several collections -- a zodiac
+                  bracelet is often a wellness bracelet too. The first one
+                  chosen is the one the breadcrumb and the homepage spread
+                  use, and it is mirrored into the old single `category` so
+                  anything still reading that keeps working. */}
+              <Field label="Collections" hint="Pick every collection it belongs in. The first is its home." className="sm:col-span-2">
+                <div className="flex flex-wrap gap-2">
+                  {CATEGORIES.map(([v, l]) => {
+                    const picked = (editing.categories?.length ? editing.categories : [editing.category]).filter(Boolean);
+                    const on = picked.includes(v);
+                    return (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => {
+                          const next = on ? picked.filter((x) => x !== v) : [...picked, v];
+                          setEditing((e) => ({ ...e, categories: next, category: next[0] || '' }));
+                        }}
+                        className={`rounded-[var(--r-btn)] border px-3 py-1.5 text-[0.8rem] transition-colors ${
+                          on ? 'border-brand bg-brand-soft text-brand' : 'border-line hover:border-brand'
+                        }`}
+                      >
+                        {l}{on && picked[0] === v ? ' · home' : ''}
+                      </button>
+                    );
+                  })}
+                </div>
               </Field>
               <Field label="Stones used">
                 <input value={editing.stone} onChange={(e) => patch('stone', e.target.value)} className="field" placeholder="Citrine & Pyrite" />

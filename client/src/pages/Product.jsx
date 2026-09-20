@@ -254,7 +254,11 @@ export default function Product() {
         <nav aria-label="Breadcrumb" className="wrap flex flex-wrap items-center gap-1.5 py-3 text-[0.78rem] text-muted [&_a]:-my-2 [&_a]:py-2">
           <Link to="/" className="hover:text-brand">Home</Link>
           <ChevronRight size={12} className="opacity-50" />
-          <Link to={`/shop/${p.category}`} className="capitalize hover:text-brand">{p.category.replace(/-/g, ' ')}</Link>
+          {/* A product can belong to several collections; the breadcrumb
+              names the first, which is the one it was filed under. */}
+          <Link to={`/shop/${p.categories?.[0] || p.category}`} className="capitalize hover:text-brand">
+            {(p.categories?.[0] || p.category || '').replace(/-/g, ' ')}
+          </Link>
           <ChevronRight size={12} className="opacity-50" />
           <span className="line-clamp-1 text-ink">{p.name}</span>
         </nav>

@@ -1,13 +1,14 @@
 import { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, useLocation, Outlet } from 'react-router-dom';
 
-import { ShopProvider, useVisitTracker } from './lib/store.jsx';
+import { ShopProvider, useShop, useVisitTracker } from './lib/store.jsx';
 import { useSeo } from './lib/seo.jsx';
 import { initPixel, pageView } from './lib/pixel.js';
 import { AccountProvider } from './lib/account.jsx';
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
 import CartDrawer from './components/CartDrawer.jsx';
+import CelebrateDialog from './components/CelebrateDialog.jsx';
 import WhatsAppButton from './components/WhatsAppButton.jsx';
 import Toasts from './components/Toasts.jsx';
 import { TopBanner } from './components/Banners.jsx';
@@ -60,9 +61,23 @@ function StoreLayout() {
       </main>
       <Footer />
       <CartDrawer />
+      <Celebration />
       <WhatsAppButton />
       <Toasts />
     </div>
+  );
+}
+
+/* Lives here rather than inside the cart drawer: it is not part of the cart,
+   and it has to outlive the drawer being closed. */
+function Celebration() {
+  const { celebrated, clearCelebrated, setDrawerOpen } = useShop();
+  return (
+    <CelebrateDialog
+      product={celebrated}
+      onClose={clearCelebrated}
+      onViewCart={() => { clearCelebrated(); setDrawerOpen(true); }}
+    />
   );
 }
 

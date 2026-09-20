@@ -31,8 +31,11 @@ export default function Home() {
     const picked = [];
     const perCategory = {};
     for (const p of all) {
-      const n = perCategory[p.category] || 0;
-      if (n < 3) { picked.push(p); perCategory[p.category] = n + 1; }
+      /* A product can sit in several collections; its first one is the one
+         this spread balances against. */
+      const key = p.categories?.[0] || p.category;
+      const n = perCategory[key] || 0;
+      if (n < 3) { picked.push(p); perCategory[key] = n + 1; }
       if (picked.length >= 12) break;
     }
     return picked.length ? picked : all.slice(0, 12);

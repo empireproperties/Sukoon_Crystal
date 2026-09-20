@@ -464,10 +464,30 @@ app.put('/api/settings', auth, (req, res) => {
 });
 
 /* ----------------------------------------------------------------- products */
+/* A product can sit in several collections. `categories` is the list; the old
+   single `category` is still read so nothing written before this change
+   disappears from its collection, and it stays in step as the first entry. */
+const categoriesOf = (p) => (
+  Array.isArray(p.categories) && p.categories.length
+    ? p.categories
+    : [p.category].filter(Boolean)
+);
+
+/* Where the shop chooses to put a product, low numbers first. Anything never
+   given a position sorts after everything that has one, newest first, so a new
+   product appears at the top of the unordered tail rather than vanishing into
+   the middle of the shop. */
+const POSITION_LAST = Number.MAX_SAFE_INTEGER;
+const positionOf = (p) => (Number.isFinite(Number(p.position)) ? Number(p.position) : POSITION_LAST);
+
+const byShopOrder = (a, b) =>
+  positionOf(a) - positionOf(b)
+  || String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+
 app.get('/api/products', (req, res) => {
   const { category, q, zodiac, sort, featured, min, max, all } = req.query;
   let list = db.products.filter((p) => (all === '1' ? true : p.active !== false));
-  if (category && category !== 'all') list = list.filter((p) => p.category === category);
+  if (category && category !== 'all') list = list.filter((p) => categoriesOf(p).includes(category));
   if (zodiac && zodiac !== 'all') list = list.filter((p) => (p.zodiac || []).includes(zodiac));
   if (featured === '1') list = list.filter((p) => p.featured);
   if (min) list = list.filter((p) => p.price >= +min);
@@ -485,7 +505,9 @@ app.get('/api/products', (req, res) => {
     popular: (a, b) => b.sold - a.sold,
     newest: (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
   };
-  if (sorters[sort]) list = [...list].sort(sorters[sort]);
+  /* No sort asked for means the shop's own order, which is the whole point of
+     being able to arrange it. A sort the visitor picked still wins. */
+  list = sorters[sort] ? [...list].sort(sorters[sort]) : [...list].sort(byShopOrder);
   res.json(list);
 });
 
@@ -494,7 +516,8 @@ app.get('/api/products/:idOrSlug', (req, res) => {
   const p = db.products.find((x) => x.id === key || x.slug === key);
   if (!p) return res.status(404).json({ error: 'Not found' });
   const related = db.products
-    .filter((x) => x.id !== p.id && x.active !== false && (x.category === p.category || x.chakra === p.chakra))
+    .filter((x) => x.id !== p.id && x.active !== false
+      && (categoriesOf(x).some((c) => categoriesOf(p).includes(c)) || x.chakra === p.chakra))
     .slice(0, 4);
   res.json({ ...p, related });
 });
@@ -506,7 +529,11 @@ app.post('/api/products', auth, (req, res) => {
     id: uid('prd'),
     slug: db.products.some((p) => p.slug === slug) ? `${slug}-${Math.floor(Math.random() * 900 + 100)}` : slug,
     name: 'Untitled crystal',
+    /* `category` is the first collection, kept in step for anything still
+       reading the old single field. */
     category: 'wellness-bracelets',
+    categories: ['wellness-bracelets'],
+    position: null,
     price: 999, mrp: 1299, stock: 10, stone: '', description: '',
     benefits: [], stones: [], chakra: 'Heart', element: 'Earth', zodiac: [],
     images: [], rating: 4.8, reviews: 0, sold: 0,
@@ -517,6 +544,25 @@ app.post('/api/products', auth, (req, res) => {
   };
   db.products = [product, ...db.products];
   res.status(201).json(product);
+});
+
+/* The shop's own running order, sent as a list of ids.
+   Declared before `/api/products/:id` because Express takes the first route
+   that matches and "reorder" is a perfectly good :id.
+   One request rather than one per product: a shop reordered by hand would
+   otherwise be thirty writes, and a half-applied order is worse than none.
+   Products not named here keep the position they had. */
+app.put('/api/products/reorder', auth, (req, res) => {
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids : null;
+  if (!ids) return res.status(400).json({ error: 'Send { ids: [...] } in the order they should appear.' });
+
+  let moved = 0;
+  ids.forEach((id, i) => {
+    const p = db.products.find((x) => x.id === id);
+    if (p && Number(p.position) !== i) { p.position = i; moved++; }
+  });
+  save();
+  res.json({ ok: true, moved });
 });
 
 app.put('/api/products/:id', auth, (req, res) => {

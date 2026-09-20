@@ -56,6 +56,8 @@ export function ShopProvider({ children }) {
   const [banners, setBanners] = useState([]);
   const [toasts, setToasts] = useState([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  /* The piece whose arrival is worth marking, if any. See CelebrateDialog. */
+  const [celebrated, setCelebrated] = useState(null);
   const [seen, setSeen] = useState(readSeen);
 
   const [theme, setThemeState] = useState(() =>
@@ -126,7 +128,17 @@ export function ShopProvider({ children }) {
       cart, count, subtotal,
       shipping,
       freeDelivery: { above: freeAbove, enabled: removeAbove },
-      addToCart: (product, qty) => { dispatch({ type: 'add', product, qty }); setDrawerOpen(true); trackAddToCart(product, qty || 1); },
+      addToCart: (product, qty) => {
+        dispatch({ type: 'add', product, qty });
+        trackAddToCart(product, qty || 1);
+        /* A flagged piece opens its own celebration rather than the drawer.
+           Both at once and the visitor closes two panels to get back to the
+           page, which is how a moment becomes an obstacle. */
+        if (product?.celebrate) setCelebrated(product);
+        else setDrawerOpen(true);
+      },
+      celebrated,
+      clearCelebrated: () => setCelebrated(null),
       setQty: (id, qty) => dispatch({ type: 'qty', id, qty }),
       removeFromCart: (id) => dispatch({ type: 'remove', id }),
       clearCart: () => dispatch({ type: 'clear' }),
@@ -137,7 +149,7 @@ export function ShopProvider({ children }) {
       toasts, toast,
       seen, remember,
     };
-  }, [cart, drawerOpen, settings, banners, toasts, toast, refreshSettings, applyTheme, theme, seen, remember]);
+  }, [cart, drawerOpen, celebrated, settings, banners, toasts, toast, refreshSettings, applyTheme, theme, seen, remember]);
 
   return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>;
 }

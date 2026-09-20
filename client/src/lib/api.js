@@ -76,6 +76,8 @@ export const api = {
   product: (key) => request(`/products/${key}`),
   createProduct: (body) => request('/products', { method: 'POST', body, auth: true }),
   updateProduct: (id, body) => request(`/products/${id}`, { method: 'PUT', body, auth: true }),
+  /* The whole running order in one request -- see the route's comment. */
+  reorderProducts: (ids) => request('/products/reorder', { method: 'PUT', body: { ids }, auth: true }),
   deleteProduct: (id) => request(`/products/${id}`, { method: 'DELETE', auth: true }),
 
   upload: (file) => {
