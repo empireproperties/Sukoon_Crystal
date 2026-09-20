@@ -179,6 +179,11 @@ export const api = {
   /* Clips already in the bucket, for attaching one without uploading it again. */
   reviewVideos: () => request('/reviews/videos', { auth: true }),
 
+  /* What this customer has earned by buying -- currently whether the
+     complimentary consultation is open to them. Personal, so it is theirs to
+     ask for and not part of the public service list. */
+  accountPerks: () => request('/account/perks', { auth: 'customer' }),
+
   /* Publishes straight away -- see the route's comment for why approval is not
      part of this path. */
   createReview: (body) => request('/reviews/admin', { method: 'POST', body, auth: true }),

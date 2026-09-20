@@ -38,7 +38,7 @@ const TAB_COPY = {
   ],
   shipping: [
     'Dispatched within 48 hours. Every piece is cleansed and charged before packing, never on the same day it is ordered.',
-    'Free shipping across India on orders above ₹999. Cash on delivery is available on orders over ₹500.',
+    'Free shipping across India on orders above ₹600. Cash on delivery is available on orders over ₹500.',
     'Delivery usually takes three to six working days depending on your PIN code.',
     'Seven-day replacement on breakage or defects. Energised pieces are personal, so we do not resell returns.',
   ],
@@ -480,7 +480,7 @@ export default function Product() {
 
               {/* delivery promises */}
               <ul className="mt-5 space-y-2.5 border-t border-line pt-5 text-[0.84rem] text-muted">
-                <li className="flex gap-2.5"><Truck size={15} strokeWidth={1.6} className="mt-0.5 shrink-0 text-accent" /> Free shipping above ₹999 · Cash on delivery available</li>
+                <li className="flex gap-2.5"><Truck size={15} strokeWidth={1.6} className="mt-0.5 shrink-0 text-accent" /> Free shipping above ₹600 · Cash on delivery available</li>
                 <li className="flex gap-2.5"><ShieldCheck size={15} strokeWidth={1.6} className="mt-0.5 shrink-0 text-accent" /> Cleansed in salt and charged with mantra before dispatch</li>
                 <li className="flex gap-2.5"><RotateCcw size={15} strokeWidth={1.6} className="mt-0.5 shrink-0 text-accent" /> Seven-day replacement on breakage or defects</li>
               </ul>

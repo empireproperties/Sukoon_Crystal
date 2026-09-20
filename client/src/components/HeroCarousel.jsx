@@ -21,7 +21,7 @@ export const FALLBACK_SLIDE = {
 const TRUST = [
   { icon: BadgeCheck, label: '100% genuine stones' },
   { icon: Sparkles, label: 'Energised before dispatch' },
-  { icon: Truck, label: 'Free shipping above ₹999' },
+  { icon: Truck, label: 'Free shipping above ₹600' },
   { icon: RotateCcw, label: '7-day replacement' },
 ];
 

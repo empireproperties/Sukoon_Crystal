@@ -47,6 +47,17 @@ function ServiceRow({ svc, onChange, onSave, onDelete, saving }) {
               onChange={(e) => onChange({ ...svc, price: Number(e.target.value) || 0 })} />
           </div>
         </Field>
+        {/* A call the shop gives away is worth giving to somebody who has
+            bought something. The booking route is what enforces it; this
+            switch only decides which service it applies to. */}
+        <Field label="Who can book it">
+          <Toggle
+            checked={Boolean(svc.requiresPurchase)}
+            onChange={(v) => onChange({ ...svc, requiresPurchase: v })}
+            label="Customers only"
+            hint="Opens once they have an order paid and confirmed."
+          />
+        </Field>
         <Field label="Duration (minutes)">
           <div className="relative">
             <Clock size={13} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />

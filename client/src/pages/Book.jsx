@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Check, ChevronLeft, ChevronRight, Clock, Video, Phone, CalendarCheck, ArrowRight, ShieldCheck, BadgeCheck, Sparkles,
+  Check, ChevronLeft, ChevronRight, Clock, Video, Phone, CalendarCheck, ArrowRight, ShieldCheck, BadgeCheck, Sparkles, Lock,
 } from 'lucide-react';
 
 import { api, inr, dateLabel } from '../lib/api.js';
 import { useAsync, useShop } from '../lib/store.jsx';
+import { useAccount } from '../lib/account.jsx';
 import { CountUp } from '../components/Motion.jsx';
 import { trackBooking } from '../lib/pixel.js';
 
@@ -39,6 +40,16 @@ export default function Book() {
   });
 
   const services = useAsync(() => api.services(), []);
+
+  /* The complimentary call is for people who have actually bought something.
+     The server is what enforces that; this only spares the visitor choosing a
+     card that would be refused at the end of four steps. */
+  const { user } = useAccount() || {};
+  const perks = useAsync(
+    () => (user ? api.accountPerks().catch(() => null) : Promise.resolve(null)),
+    [user?.id]
+  );
+  const unlocked = Boolean(perks.data?.hasPaidOrder);
   const availability = useAsync(() => (date ? api.availability(date) : Promise.resolve(null)), [date]);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -205,28 +216,51 @@ export default function Book() {
             <motion.div key="s0" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
               <h2 className="text-xl font-medium">Which consultation would help most?</h2>
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                {(services.data || []).map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => { setService(s); setStep(1); }}
-                    className={`border p-6 text-left transition-colors ${
-                      service?.id === s.id ? 'border-brand bg-brand-soft' : 'border-line bg-surface hover:border-brand'
-                    }`}
-                    style={{ borderRadius: 'var(--r-card)' }}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <h3 className="text-lg font-medium">{s.name}</h3>
-                      {s.price === 0 && <span className="badge badge-ok">Free</span>}
-                    </div>
-                    <p className="mt-1.5 flex items-center gap-1.5 text-[0.8rem] text-muted">
-                      <Clock size={12} strokeWidth={1.8} /> {s.minutes} minutes
-                    </p>
-                    <p className="mt-4 text-2xl font-semibold tnum">{s.price ? inr(s.price) : 'Complimentary'}</p>
-                    <span className="mt-4 inline-flex items-center gap-1.5 text-[0.8rem] font-medium text-brand">
-                      Select <ArrowRight size={13} />
-                    </span>
-                  </button>
-                ))}
+                {(services.data || []).map((s) => {
+                  const locked = Boolean(s.requiresPurchase) && !unlocked;
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => { if (!locked) { setService(s); setStep(1); } }}
+                      aria-disabled={locked}
+                      className={`border p-6 text-left transition-colors ${
+                        locked
+                          ? 'cursor-not-allowed border-dashed border-line bg-bg2'
+                          : service?.id === s.id ? 'border-brand bg-brand-soft' : 'border-line bg-surface hover:border-brand'
+                      }`}
+                      style={{ borderRadius: 'var(--r-card)' }}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <h3 className={`text-lg font-medium ${locked ? 'text-muted' : ''}`}>{s.name}</h3>
+                        {locked ? (
+                          <span className="badge badge-neutral inline-flex items-center gap-1">
+                            <Lock size={10} strokeWidth={2} /> Locked
+                          </span>
+                        ) : s.price === 0 ? (
+                          <span className="badge badge-ok">Free</span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1.5 flex items-center gap-1.5 text-[0.8rem] text-muted">
+                        <Clock size={12} strokeWidth={1.8} /> {s.minutes} minutes
+                      </p>
+                      <p className={`mt-4 text-2xl font-semibold tnum ${locked ? 'text-muted' : ''}`}>
+                        {s.price ? inr(s.price) : 'Complimentary'}
+                      </p>
+                      {locked ? (
+                        <span className="mt-4 block text-[0.8rem] leading-relaxed text-muted">
+                          {user
+                            ? 'Opens once you have an order paid and confirmed. Every other consultation can be booked today.'
+                            : 'For customers who have ordered. Sign in, or place an order, and it opens.'}
+                        </span>
+                      ) : (
+                        <span className="mt-4 inline-flex items-center gap-1.5 text-[0.8rem] font-medium text-brand">
+                          Select <ArrowRight size={13} />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </motion.div>
           )}

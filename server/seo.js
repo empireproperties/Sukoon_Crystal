@@ -222,7 +222,7 @@ const STATIC_PAGES = {
     title: () => `${siteName()} | Certified Astrologer-Chosen Crystals & Rudraksha`,
     description: () => 'Genuine crystal bracelets, zodiac gemstones and authentic rudraksha, '
       + 'chosen for you from your birth chart by certified astrologer Swati Khanna. Energised before '
-      + 'dispatch. Free shipping across India above ₹999, cash on delivery.',
+      + 'dispatch. Free shipping across India above ₹600, cash on delivery.',
   },
   '/shop': {
     title: () => `Shop Crystals, Zodiac Bracelets & Rudraksha | ${siteName()}`,

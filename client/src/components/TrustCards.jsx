@@ -9,7 +9,7 @@ export const TRUST_CARDS = [
   {
     icon: Truck,
     title: 'Free & fast delivery',
-    text: 'Free shipping on prepaid orders above ₹999, dispatched within 1–3 days.',
+    text: 'Free shipping on orders above ₹600, dispatched within 1–3 days.',
   },
   {
     icon: BadgeIndianRupee,

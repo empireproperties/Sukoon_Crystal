@@ -433,12 +433,31 @@ app.get('/api/customers/:id/birth-chart', auth, (req, res) => {
 });
 
 /** A customer's own orders. Scoped by id, never by anything the client sends. */
+const ordersForCustomer = (customer) => (db.orders || []).filter((o) =>
+  o.customerId === customer.id
+  || (o.customer?.email || '').toLowerCase() === (customer.email || '').toLowerCase());
+
 app.get('/api/account/orders', requireCustomer, (req, res) => {
-  const mine = (db.orders || [])
-    .filter((o) => o.customerId === req.customer.id
-      || (o.customer?.email || '').toLowerCase() === (req.customer.email || '').toLowerCase())
+  const mine = ordersForCustomer(req.customer)
     .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   res.json(mine);
+});
+
+/* Money actually received, not merely an order that exists.
+   A COD order counts once its advance is paid -- that is a real payment, and
+   it is the point at which the shop has a committed customer rather than a
+   form submission. A cancelled order never counts. */
+const isPaidOrder = (o) =>
+  o.status !== 'cancelled' && (Boolean(o.razorpayPaymentId) || Number(o.amountPaid) > 0);
+
+/* What this customer has earned. Its own route rather than a field on
+   /api/services, because that list is public and this answer is personal. */
+app.get('/api/account/perks', requireCustomer, (req, res) => {
+  const paid = ordersForCustomer(req.customer).filter(isPaidOrder);
+  res.json({
+    hasPaidOrder: paid.length > 0,
+    orders: paid.length,
+  });
 });
 
 /* ----------------------------------------------------------------- settings */
@@ -1852,6 +1871,24 @@ app.post('/api/bookings', optionalCustomer, (req, res) => {
 
   const svc = (db.services || []).find((x) => x.id === body.serviceId && x.active !== false);
   if (!svc) return res.status(400).json({ error: 'Please choose a consultation type.' });
+
+  /* A consultation the shop gives away is for people who have bought
+     something. Checked here and not only in the page, because the page is a
+     suggestion and this is the rule: the browser posts whatever it likes.
+     Signed in is required as well as paid -- matching on the email in the form
+     alone would let anyone type a paying customer's address and take it. */
+  if (svc.requiresPurchase) {
+    if (!req.customer) {
+      return res.status(401).json({
+        error: 'Please sign in. This consultation unlocks once you have a paid order with us.',
+      });
+    }
+    if (!ordersForCustomer(req.customer).some(isPaidOrder)) {
+      return res.status(403).json({
+        error: 'This one unlocks after your first paid order. Any other consultation can be booked now.',
+      });
+    }
+  }
 
   /* Every field is set here from the server's own records. The old version
      spread the request body last, so a caller could post status:'confirmed'

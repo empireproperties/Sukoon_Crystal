@@ -47,7 +47,7 @@ const HELP_LINKS = [
 export const TRUST_POINTS = [
   { icon: BadgeCheck, title: 'Genuine stones', text: 'Sourced directly and checked by hand — never dyed glass.' },
   { icon: ShieldCheck, title: 'Energised before dispatch', text: 'Cleansed in salt and charged with mantra at our Meerut studio.' },
-  { icon: Truck, title: 'Free shipping above ₹999', text: 'Across India, with cash on delivery available.' },
+  { icon: Truck, title: 'Free shipping above ₹600', text: 'Across India, with cash on delivery available.' },
   { icon: RotateCcw, title: '7-day replacement', text: 'On any breakage or defect, no questions asked.' },
 ];
 
