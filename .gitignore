@@ -26,3 +26,8 @@ server/data/db.json
 server/data/db.pre-migration.*.json
 server/data/db.pre-clean.*.json
 server/data/db.before-import.*.json
+
+# Order backups written by server/reset-orders.js. Same reason as the file DB
+# above: names, emails, phone numbers and home addresses. Keep them on disk,
+# never in the repository.
+server/backups/
