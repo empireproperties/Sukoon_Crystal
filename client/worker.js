@@ -97,6 +97,62 @@ function rewrite(response, seo) {
     .transform(response);
 }
 
+/* ---- the addresses the old Shopify shop used ----
+ *
+ * Google has these indexed, old ads point at them, and customers have them
+ * saved in WhatsApp. On this site every one is a 404 -- a paid click landing
+ * on "Product not found".
+ *
+ * The catalogue was imported from Shopify with `slug: sp.handle` (see
+ * server/import-shopify.js) and collections kept their handle too, so a
+ * Shopify handle and a slug here are the same string. That is what makes
+ * this a rename rather than a lookup.
+ *
+ * 301 rather than 302: these have moved for good, and only a permanent
+ * redirect passes the old address's standing on to the new one.
+ *
+ * Written with path segments rather than patterns -- the shapes are simple,
+ * and every layer between here and the file wants to escape a slash
+ * differently.
+ */
+const SHOPIFY_PAGE_MAP = {
+  /* Shopify's handle for this one differs from ours. The rest match. */
+  'refund-policy': 'return-refund-policy',
+  'contact-us': 'contact',
+  'about-us': 'about',
+};
+
+function shopifyRedirect(url) {
+  const path = url.pathname.length > 1 && url.pathname.endsWith("/")
+    ? url.pathname.slice(0, -1)
+    : url.pathname;
+  const seg = path.split("/").filter(Boolean);
+
+  /* /products/<handle>, and the nested /collections/<c>/products/<handle>. */
+  const at = seg.indexOf("products");
+  if (at !== -1 && seg.length === at + 2) return "/product/" + seg[at + 1];
+
+  if (seg[0] === "collections") {
+    if (seg.length === 1 || seg[1] === "all") return "/shop";
+    if (seg.length === 2) return "/shop/" + seg[1];
+  }
+
+  /* Written pages and policies, which Shopify keeps under two prefixes. */
+  if ((seg[0] === "pages" || seg[0] === "policies") && seg.length === 2) {
+    return "/" + (SHOPIFY_PAGE_MAP[seg[1]] || seg[1]);
+  }
+
+  /* Shopify searches on ?q= and so do we, so the query rides along. */
+  if (path === "/search") return "/shop" + url.search;
+  /* There is no cart page here -- the cart is a drawer over the shop. */
+  if (path === "/cart") return "/shop";
+  if (seg[0] === "account" && (seg[1] === "login" || seg[1] === "register")) return "/account";
+  /* A blog never brought across. The shop is a better answer than a 404. */
+  if (seg[0] === "blogs") return "/";
+
+  return null;
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -120,6 +176,13 @@ export default {
          would lose the original URL. */
       return fetch(new Request(target, request), { redirect: 'manual' });
     }
+
+    /* ---- links from the old Shopify shop ----
+       After the API proxy so nothing under /api/ is ever rewritten, and
+       before the assets so a stale Shopify path cannot reach the SPA
+       fallback and render as "not found". */
+    const moved = shopifyRedirect(url);
+    if (moved) return Response.redirect(new URL(moved, url.origin).toString(), 301);
 
     /* ---- robots.txt and sitemap.xml ----
        Both have to answer at the root of the site: a crawler looks for

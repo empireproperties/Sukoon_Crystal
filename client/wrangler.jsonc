@@ -34,6 +34,21 @@
     "run_worker_first": [
       "/api/*",
       "/uploads/*",
+
+      /* The old Shopify shop's addresses. They have to reach the Worker to
+         be redirected: once not_found_handling is single-page-application,
+         every path matches an asset, so anything not listed here is served
+         the shell and renders as "not found" instead. See shopifyRedirect
+         in worker.js. */
+      "/products/*",
+      "/collections/*",
+      "/pages/*",
+      "/policies/*",
+      "/blogs/*",
+      "/cart",
+      "/search",
+      "/account/login",
+      "/account/register",
       "/robots.txt",
       "/sitemap.xml",
       "/",
