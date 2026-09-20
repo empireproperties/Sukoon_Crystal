@@ -82,7 +82,17 @@ function rewrite(response, seo) {
        of the ones that feed AI answers. It is generated from the same database
        rows the components render, so it cannot drift from the real page. */
     .on('#root', {
-      element(el) { if (seo.body) el.setInnerContent(seo.body, { html: true }); },
+      element(el) {
+        /* Wrapped in a hidden element rather than poured straight in. The
+           browser paints this summary the moment it arrives, and React only
+           replaces it once the bundle has parsed -- so every visitor met a
+           flash of unstyled headings and links first. On an ad click, that
+           flash is the first impression the money bought.
+           `hidden` costs a crawler nothing: the markup is still there to
+           parse, and one that does run the bundle sees the same content
+           rendered properly. */
+        if (seo.body) el.setInnerContent(`<div data-prerender hidden>${seo.body}</div>`, { html: true });
+      },
     })
     .transform(response);
 }

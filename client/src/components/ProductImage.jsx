@@ -9,6 +9,38 @@ import { useState } from 'react';
  * `.group` is hovered or focused. The caller decides when to pass it — a grid
  * of forty products must not download eighty photos on load.
  */
+/* Cloudinary serves whatever width the URL asks for, and every stored URL
+   asks for 1200px -- so a phone showing two cards to a row downloaded a
+   picture six times wider than the space it was painted into. This swaps the
+   transform segment for a set of widths and lets the browser choose using
+   `sizes`, which every caller already passes.
+   Written with string operations rather than a regular expression: the
+   pattern is all slashes, and every layer it passes through wants to escape
+   them differently. A URL that is not one of ours comes back undefined and
+   simply has no srcset. */
+const CLOUDINARY_PREFIX = 'https://res.cloudinary.com/';
+const UPLOAD = '/image/upload/';
+const WIDTHS = [240, 360, 480, 640, 960, 1200];
+
+/** True for "v1789798859", the version segment Cloudinary puts before the id. */
+const isVersion = (seg) =>
+  seg.length > 1 && seg[0] === 'v' && [...seg.slice(1)].every((c) => c >= '0' && c <= '9');
+
+export function srcSetFor(url) {
+  const s = String(url || '');
+  const at = s.indexOf(UPLOAD);
+  if (!s.startsWith(CLOUDINARY_PREFIX) || at === -1) return undefined;
+
+  const base = s.slice(0, at + UPLOAD.length);
+  const parts = s.slice(at + UPLOAD.length).split('/');
+  /* Drop whatever transform is already there; the version segment stays. */
+  if (parts.length > 1 && !isVersion(parts[0])) parts.shift();
+  const rest = parts.join('/');
+  if (!rest) return undefined;
+
+  return WIDTHS.map((w) => `${base}f_auto,q_auto,w_${w}/${rest} ${w}w`).join(', ');
+}
+
 export default function ProductImage({
   product = {},
   src,
@@ -44,8 +76,12 @@ export default function ProductImage({
     <div className={`${base} overflow-hidden bg-bg2 ${className}`}>
       <img
         src={url}
+        srcSet={srcSetFor(url)}
         alt={name}
         sizes={sizes}
+        /* The one picture the page is judged on should not queue behind the
+           rest of the grid. */
+        fetchpriority={priority ? 'high' : undefined}
         loading={priority ? 'eager' : 'lazy'}
         decoding="async"
         onLoad={() => setState('ready')}
@@ -62,6 +98,7 @@ export default function ProductImage({
       {hoverSrc && (
         <img
           src={hoverSrc}
+          srcSet={srcSetFor(hoverSrc)}
           alt=""
           aria-hidden="true"
           sizes={sizes}
