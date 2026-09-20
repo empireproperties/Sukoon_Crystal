@@ -27,7 +27,7 @@ import { db } from './db.js';
 /* The public address of the storefront. Absolute URLs are not optional in
    structured data or in og:image -- a crawler has no base to resolve against. */
 export const siteUrl = () =>
-  (process.env.SITE_URL || 'https://sukooncrystalsolutions.com').replace(/\/+$/, '');
+  (process.env.SITE_URL || 'https://sukoon-crystalsolutions.com').replace(/\/+$/, '');
 
 const abs = (p) => (/^https?:\/\//i.test(p || '') ? p : `${siteUrl()}${p || '/'}`);
 
