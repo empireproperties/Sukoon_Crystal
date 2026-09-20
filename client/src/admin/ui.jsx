@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, Trash2, Check } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 /** Slide-over panel used by every admin editor. */
 export function SlideOver({ open, onClose, title, subtitle, children, footer, width = 'max-w-2xl' }) {
@@ -35,23 +35,99 @@ export function SlideOver({ open, onClose, title, subtitle, children, footer, wi
   );
 }
 
-/** Two-click delete so a demo never loses data by accident. */
-export function ConfirmDelete({ onConfirm, label = 'Delete', className = '' }) {
-  const [armed, setArmed] = useState(false);
+/**
+ * Destructive actions ask first, in a dialog you have to answer.
+ *
+ * This used to be a button that armed itself for three seconds and deleted on
+ * a second click -- which is indistinguishable from a double click, and gave
+ * no chance to read what was about to go.
+ */
+export function ConfirmDelete({ onConfirm, label = 'Delete', what = 'this', className = '' }) {
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  /* Escape closes it. A dialog that traps you is its own hazard. */
+  useEffect(() => {
+    if (!asking) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape' && !busy) setAsking(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [asking, busy]);
+
+  /* Every caller sits inside a row or a panel that opens an editor on click. */
+  const stop = (e) => e.stopPropagation();
+
+  const confirm = async (e) => {
+    stop(e);
+    setBusy(true);
+    try {
+      await onConfirm();
+      setAsking(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        if (armed) { onConfirm(); setArmed(false); }
-        else { setArmed(true); setTimeout(() => setArmed(false), 3000); }
-      }}
-      className={`flex items-center gap-2 rounded-[var(--r-btn)] px-3 py-2 text-[0.78rem] transition-colors ${
-        armed ? 'bg-sale/10 text-sale' : 'text-muted hover:bg-sale/8 hover:text-sale'
-      } ${className}`}
-    >
-      <Trash2 size={14} strokeWidth={1.7} /> {armed ? 'Click again to confirm' : label}
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={(e) => { stop(e); setAsking(true); }}
+        className={`flex items-center gap-2 rounded-[var(--r-btn)] px-3 py-2 text-[0.78rem] text-muted transition-colors hover:bg-sale/8 hover:text-sale ${className}`}
+      >
+        <Trash2 size={14} strokeWidth={1.7} /> {label}
+      </button>
+
+      <AnimatePresence>
+        {asking && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={(e) => { stop(e); if (!busy) setAsking(false); }}
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-[80] grid place-items-center bg-ink/50 p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.94, y: 12, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 340, damping: 26 }}
+              onClick={stop}
+              className="w-full max-w-[380px] border border-line bg-surface p-6 shadow-[var(--shadow-pop)]"
+              style={{ borderRadius: 'var(--r-card)' }}
+            >
+              <span className="grid h-11 w-11 place-items-center rounded-full bg-sale/10 text-sale">
+                <Trash2 size={18} strokeWidth={1.7} />
+              </span>
+              <h2 className="mt-4 text-[1.05rem] font-medium">Are you sure you want to delete {what}?</h2>
+              <p className="mt-1.5 text-[0.86rem] leading-relaxed text-muted">
+                This cannot be undone.
+              </p>
+              <div className="mt-5 flex gap-2">
+                <button
+                  type="button"
+                  onClick={confirm}
+                  disabled={busy}
+                  className="btn btn-sm flex-1 bg-sale text-white disabled:opacity-60"
+                >
+                  <Trash2 size={13} strokeWidth={2} /> {busy ? 'Deleting…' : 'Yes, delete'}
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { stop(e); setAsking(false); }}
+                  disabled={busy}
+                  className="btn btn-sm flex-1 border border-line disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
