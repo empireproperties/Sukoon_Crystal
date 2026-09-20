@@ -10,9 +10,9 @@ import { useAccount } from '../lib/account.jsx';
 import Logo from './Logo.jsx';
 
 /* `from` is the width at which a link earns its place in the bar. The four
-   category links are the shop and always show once there is a bar at all; About
-   and Contact wait for a wider screen and live in the menu and footer until
-   then. Without this the row simply ran past the right edge of a 1024px
+   category links are the shop and always show once there is a bar at all;
+   About and the consultation link wait for a wider screen and live in the menu
+   and footer until then. Without this the row simply ran past the right edge of a 1024px
    laptop — every link was set to `nowrap`, so nothing could give. */
 export const NAV_LINKS = [
   { to: '/shop/wellness-bracelets', label: 'Wellness' },
@@ -167,8 +167,8 @@ function MobileMenu({ open, onClose }) {
  *
  * This replaced four per-design variants stacked three and four bars deep —
  * logo row, nav row, utility row — which pushed the hero most of the way down
- * the first screen. Everything now sits on a single 60px line: mark and
- * wordmark left, navigation centred, actions right. It shrinks to 52px and
+ * the first screen. Everything now sits on a single 60px line: the mark
+ * left, navigation centred, actions right. It shrinks to 52px and
  * gains a hairline shadow once you scroll.
  */
 export default function Header() {
@@ -199,11 +199,14 @@ export default function Header() {
               <Menu size={20} strokeWidth={1.5} />
             </button>
 
-            {/* The wordmark is dropped below `sm` so the mark, the actions and
-                the cart all fit a 360px phone without the row overflowing. */}
+            {/* The mark alone. The wordmark, six links, the free-chart pill and
+                five actions did not fit even a 1920px bar: the type ran under
+                WELLNESS and the pill sat on top of the search icon. The disc
+                carries the brand here -- the name is in the footer, the page
+                title, and the link's own aria-label. */}
             <Logo
               size={scrolled ? 34 : 40}
-              textClassName="hidden sm:block"
+              showText={false}
               className="shrink-0 transition-all duration-200"
             />
 
@@ -248,14 +251,6 @@ export default function Header() {
               </Link>
               <AccountButton />
               <CartButton />
-              {/* Wrapped rather than given `hidden` directly: `.btn` sets its own
-                  `display`, which beats the utility and left this overflowing
-                  the right edge on a phone. */}
-              <span className="ml-2 hidden 2xl:block">
-                <Link to="/book" className="btn btn-accent btn-sm whitespace-nowrap">
-                  Book a call
-                </Link>
-              </span>
             </div>
           </div>
 
