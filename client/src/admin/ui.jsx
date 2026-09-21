@@ -2,6 +2,101 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { X, Trash2, Check } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+/**
+ * Controlled confirm dialog. Same shell as delete — Escape, backdrop, Cancel —
+ * but the caller picks the copy and the confirm button style.
+ */
+export function ConfirmDialog({
+  open,
+  onClose,
+  onConfirm,
+  title,
+  text,
+  confirmLabel = 'Confirm',
+  busyLabel = 'Working…',
+  icon: Icon = Check,
+  danger = false,
+}) {
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape' && !busy) onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, busy, onClose]);
+
+  useEffect(() => {
+    if (!open) setBusy(false);
+  }, [open]);
+
+  const confirm = async () => {
+    setBusy(true);
+    try {
+      await onConfirm();
+      onClose();
+    } catch {
+      /* Caller shows the error; keep the dialog open so they can retry. */
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => { if (!busy) onClose(); }}
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[80] grid place-items-center bg-ink/50 p-4 backdrop-blur-sm"
+        >
+          <motion.div
+            initial={{ scale: 0.94, y: 12, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            exit={{ scale: 0.96, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 340, damping: 26 }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-[380px] border border-line bg-surface p-6 shadow-[var(--shadow-pop)]"
+            style={{ borderRadius: 'var(--r-card)' }}
+          >
+            <span className={`grid h-11 w-11 place-items-center rounded-full ${danger ? 'bg-sale/10 text-sale' : 'bg-brand-soft text-brand'}`}>
+              <Icon size={18} strokeWidth={1.7} />
+            </span>
+            <h2 className="mt-4 text-[1.05rem] font-medium">{title}</h2>
+            {text && (
+              <p className="mt-1.5 text-[0.86rem] leading-relaxed text-muted">{text}</p>
+            )}
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={confirm}
+                disabled={busy}
+                className={`btn btn-sm flex-1 disabled:opacity-60 ${
+                  danger ? 'bg-sale text-white' : 'btn-primary'
+                }`}
+              >
+                <Icon size={13} strokeWidth={2} /> {busy ? busyLabel : confirmLabel}
+              </button>
+              <button
+                type="button"
+                onClick={() => { if (!busy) onClose(); }}
+                disabled={busy}
+                className="btn btn-sm flex-1 border border-line disabled:opacity-60"
+              >
+                Cancel
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 /** Slide-over panel used by every admin editor. */
 export function SlideOver({ open, onClose, title, subtitle, children, footer, width = 'max-w-2xl' }) {
   return (

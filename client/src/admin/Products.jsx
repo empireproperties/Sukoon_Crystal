@@ -1,16 +1,32 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Plus, Search, Package, Upload, Pencil, LayoutGrid, List, ImageOff, Eye, EyeOff, IndianRupee, TrendingUp,
-  ChevronUp, ChevronDown,
+  Plus, Search, Package, Upload, Pencil, LayoutGrid, List, ImageOff, Eye, IndianRupee, TrendingUp,
+  GripVertical, Save,
 } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 import { api, inr } from '../lib/api.js';
 import { useAsync, useShop } from '../lib/store.jsx';
 import ProductImage from '../components/ProductImage.jsx';
 import VideoPicker from '../components/VideoPicker.jsx';
 import { CHAKRAS, ZODIAC } from '../components/Ornaments.jsx';
-import { SlideOver, ConfirmDelete, Toggle, Field, EmptyState, StatCard } from './ui.jsx';
+import { SlideOver, ConfirmDelete, ConfirmDialog, Toggle, Field, EmptyState, StatCard } from './ui.jsx';
 
 const CATEGORIES = [
   ['wellness-bracelets', 'Wellness Bracelets'],
@@ -32,6 +48,57 @@ const blank = () => ({
   returnable: true,
 });
 
+function SortableProductRow({ product: p, onEdit }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className={`table-row cursor-pointer ${isDragging ? 'relative z-10 bg-brand-soft/40 shadow-sm' : ''}`}
+      onClick={() => onEdit(p)}
+    >
+      <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          aria-label="Drag to reorder"
+          className="grid h-8 w-8 cursor-grab place-items-center rounded border border-line text-muted transition-colors hover:border-brand hover:text-brand active:cursor-grabbing"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical size={14} />
+        </button>
+      </td>
+      <td className="px-5 py-3">
+        <div className="flex items-center gap-3">
+          <ProductImage product={p} className="h-11 w-11 shrink-0" imgClassName="rounded-[var(--r-btn)]" />
+          <div className="min-w-0">
+            <p className="line-clamp-1 text-[0.86rem]">{p.name}</p>
+            <p className="text-[0.72rem] text-muted">{p.sku}</p>
+          </div>
+        </div>
+      </td>
+      <td className="px-5 py-3 text-[0.8rem] capitalize text-muted">
+        {(p.categories?.length ? p.categories : [p.category]).filter(Boolean).map((c) => c.replace(/-/g, ' ')).join(', ')}
+      </td>
+      <td className="px-5 py-3 text-[0.86rem] font-medium tnum">{inr(p.price)}</td>
+      <td className={`px-5 py-3 text-[0.86rem] tnum ${p.stock <= 8 ? 'text-sale' : ''}`}>{p.stock}</td>
+      <td className="px-5 py-3 text-[0.86rem] text-muted tnum">{p.sold}</td>
+      <td className="px-5 py-3">
+        <span className={`badge ${p.active === false ? 'badge-neutral' : 'badge-ok'}`}>
+          {p.active === false ? 'Hidden' : 'Live'}
+        </span>
+      </td>
+      <td className="px-5 py-3 text-right text-[0.78rem] text-brand">Edit</td>
+    </tr>
+  );
+}
+
 export default function AdminProducts() {
   const { toast } = useShop();
   const [q, setQ] = useState('');
@@ -40,16 +107,35 @@ export default function AdminProducts() {
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [reordering, setReordering] = useState(false);
+  /* Local shop order while dragging. Null means "match the server". */
+  const [draft, setDraft] = useState(null);
+  const [confirmSave, setConfirmSave] = useState(false);
 
-  const { data: products = [], loading, reload } = useAsync(() => api.products({ all: '1' }), []);
+  const { data, loading, reload } = useAsync(() => api.products({ all: '1' }), []);
+  const products = data || [];
+
+  /* After a reload from the server, drop any local draft.
+     Depend on `data` (not a defaulted []), so a loading null does not
+     recreate an empty array every render and wipe an in-progress reorder. */
+  useEffect(() => {
+    setDraft(null);
+  }, [data]);
+
+  const ordered = draft ?? products;
 
   const list = useMemo(() => {
     const t = q.toLowerCase();
-    return (products || [])
+    return (ordered || [])
       .filter((p) => cat === 'all' || (p.categories?.length ? p.categories : [p.category]).includes(cat))
       .filter((p) => !t || `${p.name} ${p.stone} ${p.sku}`.toLowerCase().includes(t));
-  }, [products, q, cat]);
+  }, [ordered, q, cat]);
+
+  const dirty = useMemo(() => {
+    if (!draft) return false;
+    const server = (products || []).map((p) => p.id).join(',');
+    const local = draft.map((p) => p.id).join(',');
+    return server !== local;
+  }, [draft, products]);
 
   const stats = useMemo(() => ({
     total: (products || []).length,
@@ -57,6 +143,11 @@ export default function AdminProducts() {
     low: (products || []).filter((p) => p.stock <= 8).length,
     value: (products || []).reduce((t, p) => t + p.price * p.stock, 0),
   }), [products]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   const patch = (k, v) => setEditing((e) => ({ ...e, [k]: v }));
 
@@ -89,24 +180,33 @@ export default function AdminProducts() {
     reload();
   };
 
-  /* Moves a product one place in the shop's order.
-     The whole displayed order is sent rather than the two ids that swapped:
-     most products have never been given a position, and a swap between two of
-     those would be a swap between two nothings. Sending the list the admin is
-     looking at makes the order on screen the order that is saved. */
-  const move = async (index, dir) => {
-    const to = index + dir;
-    if (to < 0 || to >= list.length) return;
-    const next = [...list];
-    [next[index], next[to]] = [next[to], next[index]];
-    setReordering(true);
+  /* Drag only rearranges what is on screen. The new visible order is stitched
+     back into the full catalogue so filtered products keep their relative
+     places among the ones that were hidden. Nothing is saved until Confirm. */
+  const onDragEnd = ({ active, over }) => {
+    if (!over || active.id === over.id) return;
+    const visibleIds = list.map((p) => p.id);
+    const from = visibleIds.indexOf(active.id);
+    const to = visibleIds.indexOf(over.id);
+    if (from < 0 || to < 0) return;
+
+    const reorderedVisible = arrayMove(list, from, to);
+    const visible = new Set(visibleIds);
+    let i = 0;
+    const next = ordered.map((p) => (visible.has(p.id) ? reorderedVisible[i++] : p));
+    setDraft(next);
+  };
+
+  const saveOrder = async () => {
+    if (!draft?.length) return;
     try {
-      await api.reorderProducts(next.map((p) => p.id));
+      await api.reorderProducts(draft.map((p) => p.id));
+      toast('Shop order saved. Homepage Bestsellers follow this order.', 'success');
+      setDraft(null);
       await reload();
     } catch (e) {
       toast(e.message, 'error');
-    } finally {
-      setReordering(false);
+      throw e;
     }
   };
 
@@ -181,6 +281,31 @@ export default function AdminProducts() {
         </button>
       </div>
 
+      {view === 'list' && (
+        <p className="text-[0.78rem] text-muted">
+          Drag the handle to rearrange. The first twelve in this order appear as Bestsellers on the home page. Changes stay local until you save.
+        </p>
+      )}
+
+      {dirty && (
+        <div
+          className="flex flex-wrap items-center justify-between gap-3 border border-brand/30 bg-brand-soft px-4 py-3"
+          style={{ borderRadius: 'var(--r-card)' }}
+        >
+          <p className="text-[0.86rem]">
+            Order changed — save once when you are happy with the arrangement.
+          </p>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setDraft(null)} className="btn btn-sm border border-line bg-surface">
+              Discard
+            </button>
+            <button type="button" onClick={() => setConfirmSave(true)} className="btn btn-primary btn-sm">
+              <Save size={14} /> Save order
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* list */}
       {loading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -230,67 +355,38 @@ export default function AdminProducts() {
       ) : (
         <div className="overflow-hidden border border-line bg-surface" style={{ borderRadius: 'var(--r-card)' }}>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px]">
-              <thead>
-                <tr className="border-b border-line bg-bg2 text-left text-[0.72rem] font-medium text-muted">
-                  {['Order', 'Product', 'Collection', 'Price', 'Stock', 'Sold', 'Status', ''].map((h) => (
-                    <th key={h} className="px-5 py-3">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {list.map((p, i) => (
-                  <tr key={p.id} className="table-row cursor-pointer" onClick={() => setEditing({ ...p })}>
-                    {/* The shop's running order. `stopPropagation` because the
-                        whole row opens the editor. */}
-                    <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex flex-col gap-1">
-                        <button
-                          onClick={() => move(i, -1)}
-                          disabled={i === 0 || reordering}
-                          aria-label="Move up"
-                          className="grid h-6 w-6 place-items-center rounded border border-line text-muted transition-colors hover:border-brand hover:text-brand disabled:opacity-30"
-                        >
-                          <ChevronUp size={12} />
-                        </button>
-                        <button
-                          onClick={() => move(i, 1)}
-                          disabled={i === list.length - 1 || reordering}
-                          aria-label="Move down"
-                          className="grid h-6 w-6 place-items-center rounded border border-line text-muted transition-colors hover:border-brand hover:text-brand disabled:opacity-30"
-                        >
-                          <ChevronDown size={12} />
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-3">
-                        <ProductImage product={p} className="h-11 w-11 shrink-0" imgClassName="rounded-[var(--r-btn)]" />
-                        <div className="min-w-0">
-                          <p className="line-clamp-1 text-[0.86rem]">{p.name}</p>
-                          <p className="text-[0.72rem] text-muted">{p.sku}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3 text-[0.8rem] capitalize text-muted">
-                      {(p.categories?.length ? p.categories : [p.category]).filter(Boolean).map((c) => c.replace(/-/g, ' ')).join(', ')}
-                    </td>
-                    <td className="px-5 py-3 text-[0.86rem] font-medium tnum">{inr(p.price)}</td>
-                    <td className={`px-5 py-3 text-[0.86rem] tnum ${p.stock <= 8 ? 'text-sale' : ''}`}>{p.stock}</td>
-                    <td className="px-5 py-3 text-[0.86rem] text-muted tnum">{p.sold}</td>
-                    <td className="px-5 py-3">
-                      <span className={`badge ${p.active === false ? 'badge-neutral' : 'badge-ok'}`}>
-                        {p.active === false ? 'Hidden' : 'Live'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-right text-[0.78rem] text-brand">Edit</td>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+              <table className="w-full min-w-[720px]">
+                <thead>
+                  <tr className="border-b border-line bg-bg2 text-left text-[0.72rem] font-medium text-muted">
+                    {['Order', 'Product', 'Collection', 'Price', 'Stock', 'Sold', 'Status', ''].map((h) => (
+                      <th key={h || 'edit'} className="px-5 py-3 first:px-3">{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <SortableContext items={list.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+                  <tbody className="divide-y divide-line">
+                    {list.map((p) => (
+                      <SortableProductRow key={p.id} product={p} onEdit={(prod) => setEditing({ ...prod })} />
+                    ))}
+                  </tbody>
+                </SortableContext>
+              </table>
+            </DndContext>
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmSave}
+        onClose={() => setConfirmSave(false)}
+        onConfirm={saveOrder}
+        icon={Save}
+        title="Save the new shop order?"
+        text="This updates the product order across the store. Homepage Bestsellers will use the first twelve in this list."
+        confirmLabel="Save order"
+        busyLabel="Saving…"
+      />
 
       {/* ------------------------------------------------------------ editor */}
       <SlideOver
