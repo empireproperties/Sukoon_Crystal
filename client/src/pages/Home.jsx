@@ -19,27 +19,19 @@ import ProductRail from '../components/ProductRail.jsx';
 export default function Home() {
   const { settings } = useShop();
 
-  const popular = useAsync(() => api.products({ sort: 'popular' }), []);
+  /* No sort asked for, which is the shop's own order: whatever has been
+     arranged in Admin > Products first, then by what sells. */
+  const popular = useAsync(() => api.products(), []);
   const categories = useAsync(() => api.categories(), []);
   const slides = useAsync(() => api.slides(), []);
   const reviews = useAsync(() => api.reviews({ limit: 12 }), []);
 
-  /* Spread the bestseller row across collections so one range cannot dominate
-     the first impression. */
-  const edit = useMemo(() => {
-    const all = popular.data || [];
-    const picked = [];
-    const perCategory = {};
-    for (const p of all) {
-      /* A product can sit in several collections; its first one is the one
-         this spread balances against. */
-      const key = p.categories?.[0] || p.category;
-      const n = perCategory[key] || 0;
-      if (n < 3) { picked.push(p); perCategory[key] = n + 1; }
-      if (picked.length >= 12) break;
-    }
-    return picked.length ? picked : all.slice(0, 12);
-  }, [popular.data]);
+  /* The first twelve in the shop's own order, exactly as arranged in
+     Admin > Products.
+     This used to cap each collection at three, to stop one range filling
+     the row. That guard second-guesses a decision the shop can now make
+     for itself -- and it silently dropped whatever had been put fourth. */
+  const edit = useMemo(() => (popular.data || []).slice(0, 12), [popular.data]);
 
   return (
     <>

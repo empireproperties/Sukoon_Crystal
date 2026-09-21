@@ -499,8 +499,13 @@ const categoriesOf = (p) => (
 const POSITION_LAST = Number.MAX_SAFE_INTEGER;
 const positionOf = (p) => (Number.isFinite(Number(p.position)) ? Number(p.position) : POSITION_LAST);
 
+/* Position first, then what sells. Sorting the unarranged tail by date put
+   the newest thing the shop added above the one it sells most of, which is
+   not what a row headed Bestsellers is for -- and before anything has been
+   arranged by hand, that tail is the whole shop. */
 const byShopOrder = (a, b) =>
   positionOf(a) - positionOf(b)
+  || (Number(b.sold) || 0) - (Number(a.sold) || 0)
   || String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
 
 app.get('/api/products', (req, res) => {
