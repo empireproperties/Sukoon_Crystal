@@ -98,7 +98,11 @@ export default function Checkout() {
     if (!code) return;
     setChecking(true);
     try {
-      const res = await api.checkCoupon({ items: lines(), code });
+      const res = await api.checkCoupon({
+        items: lines(),
+        code,
+        customer: { email: form.email, phone: form.phone },
+      });
       setApplied({ code: res.code, discount: res.discount });
       toast(`${res.code} applied — ${inr(res.discount)} off`, 'success');
     } catch (e) {

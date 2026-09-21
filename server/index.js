@@ -689,14 +689,40 @@ app.get('/api/orders/track/:number', (req, res) => {
 
 const codeOf = (c) => String(c || '').trim().toUpperCase();
 
+/** Last ten digits — Indian mobiles often arrive with +91 or spaces. */
+const phoneKey = (p) => String(p || '').replace(/\D/g, '').slice(-10);
+
+/**
+ * Has this email or phone already placed a real order? Cancelled ones do not
+ * count; otherwise SUKOON10 would be locked forever by a failed first try.
+ */
+function hasPriorOrder({ email, phone } = {}) {
+  const em = String(email || '').trim().toLowerCase();
+  const ph = phoneKey(phone);
+  if (!em && !ph) return false;
+  return (db.orders || []).some((o) => {
+    if (o.status === 'cancelled') return false;
+    const oem = String(o.customer?.email || '').trim().toLowerCase();
+    const oph = phoneKey(o.customer?.phone);
+    if (em && oem && em === oem) return true;
+    if (ph && oph && ph === oph) return true;
+    return false;
+  });
+}
+
 /**
  * Checks a code against the coupon rules and works out what it is worth.
  *
  * Everything here is server-side on purpose. The discount used to be sent by
  * the browser and merely capped at the subtotal, so posting a large number
  * brought the total to zero and the order went through for free.
+ *
+ * `subtotal` is already scoped: the full charged cart, or only the lines that
+ * match `coupon.categories` when the code is collection-limited.
+ * `customer` is optional on preview; first-order codes are enforced once an
+ * email or phone is known (always at place-order / payment).
  */
-export function evaluateCoupon(rawCode, subtotal) {
+export function evaluateCoupon(rawCode, subtotal, { customer } = {}) {
   const code = codeOf(rawCode);
   if (!code) return { ok: false, discount: 0, error: null };
 
@@ -711,8 +737,22 @@ export function evaluateCoupon(rawCode, subtotal) {
   if (c.usageLimit > 0 && (c.used || 0) >= c.usageLimit) {
     return { ok: false, discount: 0, error: 'That code has been fully redeemed.' };
   }
+
+  if (c.firstOrderOnly) {
+    const email = customer?.email;
+    const phone = customer?.phone;
+    if ((email || phone) && hasPriorOrder({ email, phone })) {
+      return { ok: false, discount: 0, error: 'This code is only valid on your first order.' };
+    }
+  }
+
   if (c.minOrder > 0 && subtotal < c.minOrder) {
     return { ok: false, discount: 0, error: `Spend ₹${c.minOrder} or more to use this code.` };
+  }
+
+  /* Category-scoped codes: nothing in the basket matches → clear refusal. */
+  if (Array.isArray(c.categories) && c.categories.length && subtotal <= 0) {
+    return { ok: false, discount: 0, error: 'This code only applies to matching products in your cart.' };
   }
 
   let discount = c.type === 'flat'
@@ -728,7 +768,15 @@ export function evaluateCoupon(rawCode, subtotal) {
     ok: true,
     discount,
     error: null,
-    coupon: { id: c.id, code: codeOf(c.code), type: c.type, value: c.value, label: c.label || '' },
+    coupon: {
+      id: c.id,
+      code: codeOf(c.code),
+      type: c.type,
+      value: c.value,
+      label: c.label || '',
+      firstOrderOnly: Boolean(c.firstOrderOnly),
+      categories: Array.isArray(c.categories) ? c.categories : [],
+    },
   };
 }
 
@@ -741,9 +789,10 @@ function redeemCoupon(couponId) {
 
 /**
  * Prices a cart from the catalogue. `couponCode` is a string; the discount is
- * derived here and never taken from the request.
+ * derived here and never taken from the request. `customer` (email/phone) is
+ * used only to enforce first-order codes.
  */
-function priceCart(items = [], couponCode = '') {
+function priceCart(items = [], couponCode = '', customer = {}) {
   const priced = items
     .map((it) => {
       const p = db.products.find((x) => x.id === it.productId || x.slug === it.slug);
@@ -759,6 +808,7 @@ function priceCart(items = [], couponCode = '') {
         qty,
         bogo: Boolean(p.bogo),
         free,
+        categories: categoriesOf(p),
         shippingMode: p.shippingMode || 'default',
         shippingFee: Math.max(0, Number(p.shippingFee) || 0),
         image: p.images?.[0] || '',
@@ -790,7 +840,22 @@ function priceCart(items = [], couponCode = '') {
 
   let shipping = priced.length ? Math.max(...priced.map(feeFor)) : 0;
   if (removeAbove && freeAbove > 0 && subtotal >= freeAbove) shipping = 0;
-  const applied = evaluateCoupon(couponCode, subtotal - bogoDiscount);
+
+  /* What the coupon may discount: charged (non-free) units, optionally only
+     lines in the coupon's collections (e.g. Rudraksha for SHRAVAN15). */
+  const code = codeOf(couponCode);
+  const couponRow = code
+    ? (db.coupons || []).find((x) => codeOf(x.code) === code)
+    : null;
+  const scope = Array.isArray(couponRow?.categories) ? couponRow.categories.filter(Boolean) : [];
+  const charged = (it) => it.price * (it.qty - (it.free || 0));
+  const couponBase = scope.length
+    ? priced.reduce((t, it) => (
+      it.categories?.some((cat) => scope.includes(cat)) ? t + charged(it) : t
+    ), 0)
+    : subtotal - bogoDiscount;
+
+  const applied = evaluateCoupon(couponCode, couponBase, { customer });
   const discount = applied.ok ? applied.discount : 0;
 
   return {
@@ -803,8 +868,8 @@ function priceCart(items = [], couponCode = '') {
 
 /** Lets the cart show what a code is worth before anything is ordered. */
 app.post('/api/coupons/check', (req, res) => {
-  const { items = [], code = '' } = req.body || {};
-  const priced = priceCart(items, code);
+  const { items = [], code = '', customer = {} } = req.body || {};
+  const priced = priceCart(items, code, customer);
   if (!priced.priced.length) return res.status(400).json({ error: 'Your cart is empty.' });
   if (priced.couponError) return res.status(400).json({ error: priced.couponError });
   res.json({
@@ -855,12 +920,18 @@ app.post('/api/coupons', auth, (req, res) => {
     startDate: '',
     endDate: '',
     active: true,
+    firstOrderOnly: false,
+    categories: [],         /* empty = whole cart; e.g. ['rudraksha'] */
     createdAt: new Date().toISOString(),
     ...req.body,
     /* `used` is a ledger, never something a form can set. */
     ...(req.body?.used !== undefined ? { used: 0 } : {}),
   };
   coupon.code = codeOf(coupon.code);
+  coupon.categories = Array.isArray(coupon.categories)
+    ? coupon.categories.map(String).filter(Boolean)
+    : [];
+  coupon.firstOrderOnly = Boolean(coupon.firstOrderOnly);
   db.coupons = [...(db.coupons || []), coupon];
   save();
   res.status(201).json(coupon);
@@ -869,6 +940,12 @@ app.post('/api/coupons', auth, (req, res) => {
 app.put('/api/coupons/:id', auth, (req, res) => {
   const patch = { ...req.body };
   if (patch.code) patch.code = codeOf(patch.code);
+  if (patch.categories !== undefined) {
+    patch.categories = Array.isArray(patch.categories)
+      ? patch.categories.map(String).filter(Boolean)
+      : [];
+  }
+  if (patch.firstOrderOnly !== undefined) patch.firstOrderOnly = Boolean(patch.firstOrderOnly);
   /* Redemptions are a record of what happened; editing a coupon must not
      silently reset how many times it has been used. */
   delete patch.used;
@@ -935,7 +1012,7 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
     });
   }
 
-  const totals = priceCart(items, couponCode);
+  const totals = priceCart(items, couponCode, customer);
   if (!totals.priced.length) return res.status(400).json({ error: 'None of those products are available.' });
   /* A code that was valid when the cart page loaded may have expired since. */
   if (couponCode && totals.couponError) return res.status(400).json({ error: totals.couponError });
@@ -1022,8 +1099,9 @@ app.post('/api/payments/razorpay/order', async (req, res) => {
   const { items = [], customer = {}, couponCode = '', payment = 'Prepaid' } = req.body || {};
   if (!items.length) return res.status(400).json({ error: 'Your cart is empty.' });
 
-  const totals = priceCart(items, couponCode);
+  const totals = priceCart(items, couponCode, customer);
   if (!totals.priced.length) return res.status(400).json({ error: 'None of those products are available.' });
+  if (couponCode && totals.couponError) return res.status(400).json({ error: totals.couponError });
   if (totals.total <= 0) return res.status(400).json({ error: 'Order total must be greater than zero.' });
 
   /* The minimum is checked against the priced total, after any coupon, so a
@@ -2173,6 +2251,77 @@ if (fs.existsSync(DIST)) {
 const info = await initDb();
 const summary = (counts) =>
   Object.entries(counts).filter(([, n]) => n).map(([k, n]) => `${k} ${n}`).join(', ') || 'empty';
+
+/* Shop-facing codes that marketing already advertises. Inserted once if
+   missing; existing rows keep their usage counters and only gain missing
+   rule flags (first-order / Rudraksha scope). */
+{
+  db.coupons = db.coupons || [];
+  let changed = false;
+  const find = (code) => db.coupons.find((c) => codeOf(c.code) === code);
+
+  const sukoon = find('SUKOON10');
+  if (!sukoon) {
+    db.coupons.push({
+      id: uid('cpn'),
+      code: 'SUKOON10',
+      label: '10% off your first order',
+      type: 'percent',
+      value: 10,
+      maxDiscount: 0,
+      minOrder: 0,
+      usageLimit: 0,
+      used: 0,
+      startDate: '',
+      endDate: '',
+      active: true,
+      firstOrderOnly: true,
+      categories: [],
+      createdAt: new Date().toISOString(),
+    });
+    changed = true;
+  } else if (!sukoon.firstOrderOnly) {
+    sukoon.firstOrderOnly = true;
+    if (!sukoon.label) sukoon.label = '10% off your first order';
+    changed = true;
+  }
+
+  const shravan = find('SHRAVAN15');
+  if (!shravan) {
+    db.coupons.push({
+      id: uid('cpn'),
+      code: 'SHRAVAN15',
+      label: '15% off all Rudraksha this month',
+      type: 'percent',
+      value: 15,
+      maxDiscount: 0,
+      minOrder: 0,
+      usageLimit: 0,
+      used: 0,
+      startDate: '',
+      endDate: '',
+      active: true,
+      firstOrderOnly: false,
+      categories: ['rudraksha'],
+      createdAt: new Date().toISOString(),
+    });
+    changed = true;
+  } else {
+    const cats = Array.isArray(shravan.categories) ? shravan.categories : [];
+    if (!cats.includes('rudraksha') || Number(shravan.value) !== 15 || shravan.type !== 'percent') {
+      shravan.categories = ['rudraksha'];
+      shravan.type = 'percent';
+      shravan.value = 15;
+      if (!shravan.label) shravan.label = '15% off all Rudraksha this month';
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    await saveNow();
+    console.log('  Coupons     ->  ensured SUKOON10 (first order) and SHRAVAN15 (Rudraksha)');
+  }
+}
 
 if (info.mode === 'cockroach') {
   console.log(`  CockroachDB ->  ${info.db}  (${summary(info.counts)})`);
