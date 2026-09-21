@@ -40,11 +40,17 @@ export default function AdminOrders() {
   const [params, setParams] = useSearchParams();
   const status = params.get('status') || 'all';
   const [q, setQ] = useState('');
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [item, setItem] = useState('');
   const [open, setOpen] = useState(null);
   const [invoiceFor, setInvoiceFor] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  const { data: orders = [], loading, reload } = useAsync(() => api.orders({ status, q }), [status, q]);
+  const { data: orders = [], loading, reload } = useAsync(
+    () => api.orders({ status, q, name, phone, item }),
+    [status, q, name, phone, item]
+  );
   const all = useAsync(() => api.orders({}), []);
 
   const counts = useMemo(() => {
@@ -59,6 +65,15 @@ export default function AdminOrders() {
     () => (orders || []).filter((o) => o.status !== 'cancelled').reduce((t, o) => t + o.total, 0),
     [orders]
   );
+
+  /* The pieces that have actually been ordered, so the filter offers real
+     choices rather than the whole catalogue. Built from every order and not
+     the filtered list -- otherwise choosing a piece empties its own menu. */
+  const piecesOrdered = useMemo(() => {
+    const names = new Set();
+    for (const o of all.data || []) for (const it of o.items || []) if (it.name) names.add(it.name);
+    return [...names].sort((a, b) => a.localeCompare(b));
+  }, [all.data]);
 
   const setStatus = (s) => {
     const next = new URLSearchParams(params);
@@ -108,16 +123,61 @@ export default function AdminOrders() {
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="relative min-w-[240px] flex-1">
+      {/* Name, phone and piece are separate fields on purpose. The questions
+          this page actually gets asked are "what did this person order" and
+          "who bought this piece", and one box that matches everything at
+          once answers neither cleanly. */}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[1.1fr_1fr_1fr_1.3fr]">
+        <div className="relative">
           <Search size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search by order number, name, phone, city or tracking number…"
+            placeholder="Order number, city or tracking"
+            aria-label="Search orders"
             className="field !pl-9"
           />
         </div>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Customer name"
+          aria-label="Filter by customer name"
+          className="field"
+        />
+        {/* Matched on digits alone, so +91 90122 57555 and 9012257555 are
+            the same number as far as this box is concerned. */}
+        <input
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="Phone number"
+          inputMode="numeric"
+          aria-label="Filter by phone number"
+          className="field tnum"
+        />
+        <select
+          value={item}
+          onChange={(e) => setItem(e.target.value)}
+          aria-label="Filter by piece"
+          className="field"
+        >
+          <option value="">Any piece</option>
+          {piecesOrdered.map((n) => <option key={n} value={n}>{n}</option>)}
+        </select>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <p className="text-[0.8rem] text-muted">
+          {orders.length} shown
+          {(q || name || phone || item) && (
+            <button
+              onClick={() => { setQ(''); setName(''); setPhone(''); setItem(''); }}
+              className="ml-3 text-brand underline underline-offset-2"
+            >
+              Clear filters
+            </button>
+          )}
+        </p>
         <div className="text-right">
           <p className="text-[0.72rem] text-muted">Value of shown orders</p>
           <p className="text-xl font-semibold tnum">{inr(revenue)}</p>
@@ -136,7 +196,7 @@ export default function AdminOrders() {
             <table className="w-full min-w-[820px]">
               <thead>
                 <tr className="border-b border-line bg-bg2 text-left text-[0.72rem] font-medium text-muted">
-                  {['Order', 'Customer', 'Items', 'Placed', 'Payment', 'Status', 'Total', ''].map((h) => (
+                  {['Order', 'Customer', 'Pieces', 'Placed', 'Payment', 'Status', 'Total', ''].map((h) => (
                     <th key={h} className="px-5 py-3">{h}</th>
                   ))}
                 </tr>
@@ -154,9 +214,19 @@ export default function AdminOrders() {
                     <td className="px-5 py-3 text-[0.82rem] font-medium tnum">{o.number}</td>
                     <td className="px-5 py-3">
                       <p className="text-[0.86rem]">{o.customer.name}</p>
+                      {/* The phone is what the shop rings when a delivery goes
+                          wrong. It belongs in the row, not two clicks away. */}
+                      <p className="text-[0.72rem] text-muted tnum">{o.customer.phone}</p>
                       <p className="text-[0.72rem] text-muted">{o.customer.city}, {o.customer.state}</p>
                     </td>
-                    <td className="px-5 py-3 text-[0.82rem] text-muted tnum">{o.items.length}</td>
+                    <td className="px-5 py-3">
+                      <p className="line-clamp-1 max-w-[240px] text-[0.82rem]">
+                        {o.items?.[0]?.name || '—'}
+                      </p>
+                      {o.items?.length > 1 && (
+                        <p className="text-[0.72rem] text-muted">+{o.items.length - 1} more</p>
+                      )}
+                    </td>
                     <td className="px-5 py-3 text-[0.82rem] text-muted">
                       {dateLabel(o.createdAt, { day: 'numeric', month: 'short' })}
                     </td>

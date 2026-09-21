@@ -636,10 +636,29 @@ app.use((err, _req, res, next) => {
 /* ------------------------------------------------------------------- orders */
 const FLOW = ['placed', 'confirmed', 'packed', 'in_transit', 'delivered'];
 
+/* Digits only. A phone number is typed with +91, spaces and dashes in every
+   combination a person can invent, and none of them are part of the number --
+   so "90122 57555" has to find the order saved as "+919012257555". */
+const digitsOf = (s) => String(s || "").split("").filter((c) => c >= "0" && c <= "9").join("");
+const has = (hay, needle) => String(hay || "").toLowerCase().includes(String(needle).toLowerCase());
+
 app.get('/api/orders', auth, (req, res) => {
-  const { status, q } = req.query;
+  const { status, q, name, phone, item } = req.query;
   let list = db.orders;
   if (status && status !== 'all') list = list.filter((o) => o.status === status);
+
+  /* Separate fields rather than one box: the question is usually "what did
+     this person order" or "who bought this piece", and a single search that
+     matches everything answers neither cleanly. */
+  if (name) list = list.filter((o) => has(o.customer?.name, name));
+  if (phone) {
+    const d = digitsOf(phone);
+    if (d) list = list.filter((o) => digitsOf(o.customer?.phone).includes(d));
+  }
+  if (item) {
+    list = list.filter((o) => (o.items || []).some((it) => has(it.name, item) || has(it.slug, item)));
+  }
+
   if (q) {
     const t = String(q).toLowerCase();
     list = list.filter((o) =>
