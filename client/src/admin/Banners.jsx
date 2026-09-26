@@ -24,7 +24,7 @@ const LINKS = [
 
 const PRESETS = [
   { title: ‘Diwali Muhurat Sale’, subtitle: ‘The wealth window’, message: ‘Up to 30% off money trees, pyrite and citrine’, code: ‘DIWALI30’, palette: ‘saffron’, cta: ‘Shop the sale’, link: ‘/shop’ },
-  { title: ‘Navratri Nine Nights’, subtitle: ‘Nine goddesses, nine stones’, message: ‘A new stone unlocked every night of the festival’, code: ‘NAVRATRI9’, palette: ‘maroon’, cta: ‘See tonight’s stone’, link: ‘/calendar’ },
+  { title: ‘Navratri Nine Nights’, subtitle: ‘Nine goddesses, nine stones’, message: ‘A new stone unlocked every night of the festival’, code: ‘NAVRATRI9’, palette: ‘maroon’, cta: ‘See tonights stone’, link: ‘/calendar’ },
   { title: ‘Full Moon Charging’, subtitle: ‘Tonight only’, message: ‘Free selenite charging plate on every order above ₹1,499’, code: ‘FULLMOON’, palette: ‘indigo’, cta: ‘Shop now’, link: ‘/shop/sukoon-special’ },
 ];
 
