@@ -174,21 +174,6 @@ const events = [
 const banners = [
   {
     id: uid('bnr'),
-    title: 'Shravan Special',
-    subtitle: 'Energised Rudraksha & Shiva stones',
-    message: 'Flat 15% off all Rudraksha through the holy month',
-    code: 'SHRAVAN15',
-    cta: 'Shop Rudraksha',
-    link: '/shop/rudraksha',
-    palette: 'auto',
-    placement: 'top',
-    active: true,
-    startDate: iso(NOW - 12 * DAY).slice(0, 10),
-    endDate: iso(NOW + 16 * DAY).slice(0, 10),
-    createdAt: iso(NOW - 12 * DAY),
-  },
-  {
-    id: uid('bnr'),
     title: 'Ganesh Chaturthi',
     subtitle: 'Prosperity collection',
     message: 'Citrine & Pyrite at blessing prices - Bappa blessings on every order',

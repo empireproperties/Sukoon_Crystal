@@ -842,7 +842,7 @@ function priceCart(items = [], couponCode = '', customer = {}) {
   if (removeAbove && freeAbove > 0 && subtotal >= freeAbove) shipping = 0;
 
   /* What the coupon may discount: charged (non-free) units, optionally only
-     lines in the coupon's collections (e.g. Rudraksha for SHRAVAN15). */
+     lines in the coupon's collections (e.g. Rudraksha). */
   const code = codeOf(couponCode);
   const couponRow = code
     ? (db.coupons || []).find((x) => codeOf(x.code) === code)
@@ -2286,40 +2286,10 @@ const summary = (counts) =>
     changed = true;
   }
 
-  const shravan = find('SHRAVAN15');
-  if (!shravan) {
-    db.coupons.push({
-      id: uid('cpn'),
-      code: 'SHRAVAN15',
-      label: '15% off all Rudraksha this month',
-      type: 'percent',
-      value: 15,
-      maxDiscount: 0,
-      minOrder: 0,
-      usageLimit: 0,
-      used: 0,
-      startDate: '',
-      endDate: '',
-      active: true,
-      firstOrderOnly: false,
-      categories: ['rudraksha'],
-      createdAt: new Date().toISOString(),
-    });
-    changed = true;
-  } else {
-    const cats = Array.isArray(shravan.categories) ? shravan.categories : [];
-    if (!cats.includes('rudraksha') || Number(shravan.value) !== 15 || shravan.type !== 'percent') {
-      shravan.categories = ['rudraksha'];
-      shravan.type = 'percent';
-      shravan.value = 15;
-      if (!shravan.label) shravan.label = '15% off all Rudraksha this month';
-      changed = true;
-    }
-  }
 
   if (changed) {
     await saveNow();
-    console.log('  Coupons     ->  ensured SUKOON10 (first order) and SHRAVAN15 (Rudraksha)');
+    console.log('  Coupons     ->  ensured SUKOON10 (first order)');
   }
 }
 

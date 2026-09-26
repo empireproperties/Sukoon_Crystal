@@ -46,7 +46,7 @@ const TAB_COPY = {
 
 const OFFERS = [
   { code: 'SUKOON10', text: '10% off your first order' },
-  { code: 'SHRAVAN15', text: '15% off all Rudraksha this month' },
+  { code: null, text: 'Every piece is energised and blessing-sealed before dispatch' },
   { code: null, text: 'Free selenite charging plate on orders above ₹2,499' },
 ];
 
