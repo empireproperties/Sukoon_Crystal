@@ -472,7 +472,10 @@ const publicSettings = (s) => {
   return out;
 };
 
-app.get('/api/settings', (_req, res) => res.json(publicSettings(db.settings)));
+app.get('/api/settings', (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+  res.json(publicSettings(db.settings));
+});
 
 app.put('/api/settings', auth, (req, res) => {
   /* Equally, a client must not be able to overwrite the signing key. */
@@ -532,6 +535,7 @@ app.get('/api/products', (req, res) => {
   /* No sort asked for means the shop's own order, which is the whole point of
      being able to arrange it. A sort the visitor picked still wins. */
   list = sorters[sort] ? [...list].sort(sorters[sort]) : [...list].sort(byShopOrder);
+  res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
   res.json(list);
 });
 
@@ -543,6 +547,7 @@ app.get('/api/products/:idOrSlug', (req, res) => {
     .filter((x) => x.id !== p.id && x.active !== false
       && (categoriesOf(x).some((c) => categoriesOf(p).includes(c)) || x.chakra === p.chakra))
     .slice(0, 4);
+  res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
   res.json({ ...p, related });
 });
 
@@ -1212,6 +1217,7 @@ app.post('/api/payments/razorpay/webhook', (req, res) => {
 app.get('/api/banners', (req, res) => {
   if (req.query.all === '1') return res.json(db.banners);
   const today = dayKey(Date.now());
+  res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
   res.json(db.banners.filter((b) =>
     b.active && (!b.startDate || b.startDate <= today) && (!b.endDate || b.endDate >= today)));
 });
@@ -1237,7 +1243,9 @@ app.delete('/api/banners/:id', auth, (req, res) => {
 
 /* ------------------------------------------------------------------- events */
 app.get('/api/events', (req, res) => {
-  const list = req.query.all === '1' ? db.events : db.events.filter((e) => e.published !== false);
+  if (req.query.all === '1') return res.json(db.events);
+  const list = db.events.filter((e) => e.published !== false);
+  res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
   res.json([...list].sort((a, b) => a.date.localeCompare(b.date)));
 });
 app.post('/api/events', auth, (req, res) => {
@@ -1259,7 +1267,10 @@ app.delete('/api/events/:id', auth, (req, res) => {
 });
 
 /* ------------------------------------------------- categories / imported data */
-app.get('/api/categories', (_req, res) => res.json(db.categories || []));
+app.get('/api/categories', (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
+  res.json(db.categories || []);
+});
 
 /* Everyone who has ever bought, whether or not they created an account. Guest
    checkouts only exist inside their orders, so they are folded in by email --
@@ -1836,8 +1847,10 @@ app.delete('/api/slides/:id', auth, (req, res) => {
 });
 
 /* ----------------------------------------------------------------- bookings */
-app.get('/api/services', (_req, res) =>
-  res.json((db.services || []).filter((s) => s.active !== false)));
+app.get('/api/services', (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
+  res.json((db.services || []).filter((s) => s.active !== false));
+});
 
 /* Consultation scheduling, all of it admin-editable under settings.consult.
    Slots and the "closed Sunday morning" rule used to be hardcoded here, which
@@ -2038,6 +2051,26 @@ app.delete('/api/bookings/:id', auth, (req, res) => {
    here and reported them as real people. */
 const BOT_UA = /HeadlessChrome|Playwright|Puppeteer|bot|crawler|spider|curl\/|wget|python-requests|node-fetch|axios|Lighthouse|PhantomJS|Selenium/i;
 
+let unpersistedVisits = 0;
+let visitSaveTimer = null;
+function scheduleVisitPersist() {
+  unpersistedVisits++;
+  if (unpersistedVisits >= 25) {
+    unpersistedVisits = 0;
+    if (visitSaveTimer) clearTimeout(visitSaveTimer);
+    visitSaveTimer = null;
+    save();
+    return;
+  }
+  if (!visitSaveTimer) {
+    visitSaveTimer = setTimeout(() => {
+      unpersistedVisits = 0;
+      visitSaveTimer = null;
+      save();
+    }, 60_000);
+  }
+}
+
 app.post('/api/analytics/visit', (req, res) => {
   const ua = req.headers['user-agent'] || '';
   /* Answer 200 either way -- a bot being told it was filtered is noise, and the
@@ -2055,7 +2088,7 @@ app.post('/api/analytics/visit', (req, res) => {
 
   db.visits.push({ id: uid('vst'), at: new Date().toISOString(), path: p, session, source, device, ua: ua.slice(0, 180) });
   if (db.visits.length > 2000) db.visits.splice(0, db.visits.length - 2000);
-  save();
+  scheduleVisitPersist();
   res.json({ ok: true });
 });
 
