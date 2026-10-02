@@ -5,7 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import multer from 'multer';
 import { fileURLToPath } from 'url';
-import { db, save, saveNow, uid, initDb } from './db.js';
+import { db, save, saveNow, uid, initDb, reloadCollection } from './db.js';
 import { DEFAULT_DESIGN, DEFAULT_PALETTE, isLivePalette } from './theme.js';
 import { configureCloudinary, uploadBuffer, uploadVideoBuffer } from './cloudinary.js';
 import { configureR2, uploadVideoToR2, deleteFromR2, listVideos as listR2Videos, isOurs as isOurR2Url, keyFromUrl as r2KeyFromUrl } from './r2.js';
@@ -158,10 +158,23 @@ app.post('/api/auth/login', async (req, res) => {
     return res.status(429).json({ error: `Too many attempts. Try again in ${Math.ceil(blockedFor / 60)} minute(s).` });
   }
 
-  const admin = (db.admins || []).find((a) => a.email === email && a.active !== false);
+  let admin = (db.admins || []).find((a) => a.email === email && a.active !== false);
   /* Hash even when the email is unknown, so a missing account is not detectably
      faster to reject than a wrong password. */
-  const ok = await verifyPassword(password, admin?.passwordHash || 'scrypt$16384$8$1$AAAA$AAAA');
+  let ok = await verifyPassword(password, admin?.passwordHash || 'scrypt$16384$8$1$AAAA$AAAA');
+
+  /* If memory doesn't match, reload admins from database in case password was reset externally */
+  if (!admin || !ok) {
+    try {
+      const freshAdmins = await reloadCollection('admins');
+      admin = (freshAdmins || []).find((a) => a.email === email && a.active !== false);
+      if (admin) {
+        ok = await verifyPassword(password, admin.passwordHash || 'scrypt$16384$8$1$AAAA$AAAA');
+      }
+    } catch (e) {
+      console.warn('  ! failed to reload admins from database:', e.message);
+    }
+  }
 
   if (!admin || !ok) {
     recordFailure(key);
@@ -246,8 +259,19 @@ app.post('/api/account/login', async (req, res) => {
   const blockedFor = loginBlockedFor(key);
   if (blockedFor) return res.status(429).json({ error: `Too many attempts. Try again in ${Math.ceil(blockedFor / 60)} minute(s).` });
 
-  const customer = (db.customers || []).find((c) => (c.email || '').toLowerCase() === email && c.active !== false);
-  const ok = await verifyPassword(password, customer?.passwordHash || 'scrypt$16384$8$1$AAAA$AAAA');
+  let customer = (db.customers || []).find((c) => (c.email || '').toLowerCase() === email && c.active !== false);
+  let ok = await verifyPassword(password, customer?.passwordHash || 'scrypt$16384$8$1$AAAA$AAAA');
+  if (!customer || !ok) {
+    try {
+      const freshCustomers = await reloadCollection('customers');
+      customer = (freshCustomers || []).find((c) => (c.email || '').toLowerCase() === email && c.active !== false);
+      if (customer) {
+        ok = await verifyPassword(password, customer.passwordHash || 'scrypt$16384$8$1$AAAA$AAAA');
+      }
+    } catch (e) {
+      console.warn('  ! failed to reload customers from database:', e.message);
+    }
+  }
   if (!customer || !ok) {
     recordFailure(key);
     return res.status(401).json({ error: BAD_LOGIN });

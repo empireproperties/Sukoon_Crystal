@@ -213,6 +213,28 @@ export function load() {
   return cache;
 }
 
+/** Reloads a specific collection fresh from the database (e.g. for credential checks). */
+export async function reloadCollection(name) {
+  if (pgDriver) {
+    const docs = await pgDriver.loadCollection(name);
+    if (cache) {
+      cache[name] = docs;
+      snapshots.set(name, snapshotOf(docs));
+    }
+    return docs;
+  }
+  if (mongo) {
+    const docs = await mongo.collection(name).find({}).toArray();
+    const clean = docs.map(strip);
+    if (cache) {
+      cache[name] = clean;
+      snapshots.set(name, snapshotOf(clean));
+    }
+    return clean;
+  }
+  return cache?.[name] || [];
+}
+
 /* -------------------------------------------------------------------- write */
 
 /** Diffs one collection against the snapshot taken at the last flush. */
