@@ -2054,7 +2054,7 @@ app.post('/api/analytics/visit', (req, res) => {
   if (automated === true) return res.json({ ok: true, counted: false });
 
   db.visits.push({ id: uid('vst'), at: new Date().toISOString(), path: p, session, source, device, ua: ua.slice(0, 180) });
-  if (db.visits.length > 60000) db.visits.splice(0, db.visits.length - 60000);
+  if (db.visits.length > 2000) db.visits.splice(0, db.visits.length - 2000);
   save();
   res.json({ ok: true });
 });

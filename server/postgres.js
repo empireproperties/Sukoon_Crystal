@@ -90,12 +90,26 @@ async function withRetry(fn, { attempts = 6, label = 'query' } = {}) {
  */
 export async function ensureSchema(collections) {
   const p = getPool();
+  /* Check existing tables in one fast query so cold starts don't execute
+     18 distributed DDL transactions across Cockroach nodes. */
+  let existing = new Set();
+  try {
+    const { rows } = await withRetry(
+      () => p.query(`SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema()`),
+      { attempts: 3, label: 'check tables' }
+    );
+    existing = new Set(rows.map((r) => r.table_name));
+  } catch {
+    /* Fallback to normal flow if information_schema query fails */
+  }
+
   for (const name of collections) {
+    if (existing.has(name)) continue;
     await withRetry(
       () =>
         p.query(`
           CREATE TABLE IF NOT EXISTS ${ident(name)} (
-            key        STRING PRIMARY KEY,
+            key        TEXT PRIMARY KEY,
             doc        JSONB NOT NULL,
             updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
           )
@@ -103,17 +117,19 @@ export async function ensureSchema(collections) {
       { label: `create ${name}` }
     );
   }
-  await withRetry(
-    () =>
-      p.query(`
-        CREATE TABLE IF NOT EXISTS "settings" (
-          key        STRING PRIMARY KEY,
-          doc        JSONB NOT NULL,
-          updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-        )
-      `),
-    { label: 'create settings' }
-  );
+  if (!existing.has('settings')) {
+    await withRetry(
+      () =>
+        p.query(`
+          CREATE TABLE IF NOT EXISTS "settings" (
+            key        TEXT PRIMARY KEY,
+            doc        JSONB NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+          )
+        `),
+      { label: 'create settings' }
+    );
+  }
 }
 
 /* -------------------------------------------------------------------- read */

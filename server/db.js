@@ -295,7 +295,7 @@ export function save() {
   writeTimer = setTimeout(() => {
     writeTimer = null;
     flush();
-  }, mongo || pgDriver ? 400 : 120);
+  }, mongo || pgDriver ? 2000 : 120);
 }
 
 export function saveNow(data) {
