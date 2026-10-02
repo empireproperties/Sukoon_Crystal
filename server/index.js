@@ -1534,6 +1534,7 @@ app.get('/api/reviews', (req, res) => {
     || String(b.createdAt).localeCompare(String(a.createdAt)));
   const out = (limit ? list.slice(0, Number(limit) || 12) : list)
     .map((r) => ({ ...r, product: reviewProduct(r.productId) }));
+  res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
   res.json(out);
 });
 
@@ -1813,6 +1814,7 @@ app.get('/api/account/orders/:id/returnable', requireCustomer, (req, res) => {
 app.get('/api/slides', (req, res) => {
   if (req.query.all === '1') return res.json(db.slides || []);
   const today = dayKey(Date.now());
+  res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
   res.json((db.slides || [])
     .filter((s) => s.active && (!s.startDate || s.startDate <= today) && (!s.endDate || s.endDate >= today))
     .sort((a, b) => (a.order || 0) - (b.order || 0)));
