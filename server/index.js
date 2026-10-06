@@ -553,7 +553,7 @@ app.get('/api/products', (req, res) => {
     'price-asc': (a, b) => a.price - b.price,
     'price-desc': (a, b) => b.price - a.price,
     rating: (a, b) => b.rating - a.rating,
-    popular: (a, b) => b.sold - a.sold,
+    popular: (a, b) => byShopOrder(a, b),
     newest: (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
   };
   /* No sort asked for means the shop's own order, which is the whole point of
