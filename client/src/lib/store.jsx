@@ -185,13 +185,13 @@ export function useVisitTracker(pathname) {
 
 /* ------------------------------------------------------------ utilities */
 export function useAsync(fn, deps = []) {
-  const [state, setState] = useState({ loading: true, data: null, error: null });
+  const [state, setState] = useState({ loading: true, data: undefined, error: null });
   const run = useCallback(() => {
     let alive = true;
     setState((s) => ({ ...s, loading: true }));
     Promise.resolve(fn())
       .then((data) => alive && setState({ loading: false, data, error: null }))
-      .catch((error) => alive && setState({ loading: false, data: null, error: error.message }));
+      .catch((error) => alive && setState({ loading: false, data: undefined, error: error.message }));
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);

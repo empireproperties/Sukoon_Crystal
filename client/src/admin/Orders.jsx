@@ -47,22 +47,23 @@ export default function AdminOrders() {
   const [invoiceFor, setInvoiceFor] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  const { data: orders = [], loading, reload } = useAsync(
+  const { data: rawOrders, loading, reload } = useAsync(
     () => api.orders({ status, q, name, phone, item }),
     [status, q, name, phone, item]
   );
+  const orders = Array.isArray(rawOrders) ? rawOrders : [];
   const all = useAsync(() => api.orders({}), []);
+  const allOrders = Array.isArray(all.data) ? all.data : [];
 
   const counts = useMemo(() => {
-    const src = all.data || [];
     return {
-      all: src.length,
-      ...Object.fromEntries(Object.keys(META).map((k) => [k, src.filter((o) => o.status === k).length])),
+      all: allOrders.length,
+      ...Object.fromEntries(Object.keys(META).map((k) => [k, allOrders.filter((o) => o.status === k).length])),
     };
-  }, [all.data]);
+  }, [allOrders]);
 
   const revenue = useMemo(
-    () => (orders || []).filter((o) => o.status !== 'cancelled').reduce((t, o) => t + o.total, 0),
+    () => orders.filter((o) => o.status !== 'cancelled').reduce((t, o) => t + (o.total || 0), 0),
     [orders]
   );
 
@@ -71,9 +72,9 @@ export default function AdminOrders() {
      the filtered list -- otherwise choosing a piece empties its own menu. */
   const piecesOrdered = useMemo(() => {
     const names = new Set();
-    for (const o of all.data || []) for (const it of o.items || []) if (it.name) names.add(it.name);
+    for (const o of allOrders) for (const it of o.items || []) if (it.name) names.add(it.name);
     return [...names].sort((a, b) => a.localeCompare(b));
-  }, [all.data]);
+  }, [allOrders]);
 
   const setStatus = (s) => {
     const next = new URLSearchParams(params);
@@ -168,7 +169,7 @@ export default function AdminOrders() {
 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <p className="text-[0.8rem] text-muted">
-          {orders.length} shown
+          {loading ? 'Loading orders…' : `${orders.length} shown`}
           {(q || name || phone || item) && (
             <button
               onClick={() => { setQ(''); setName(''); setPhone(''); setItem(''); }}
@@ -213,11 +214,11 @@ export default function AdminOrders() {
                   >
                     <td className="px-5 py-3 text-[0.82rem] font-medium tnum">{o.number}</td>
                     <td className="px-5 py-3">
-                      <p className="text-[0.86rem]">{o.customer.name}</p>
+                      <p className="text-[0.86rem]">{o.customer?.name || 'Guest'}</p>
                       {/* The phone is what the shop rings when a delivery goes
                           wrong. It belongs in the row, not two clicks away. */}
-                      <p className="text-[0.72rem] text-muted tnum">{o.customer.phone}</p>
-                      <p className="text-[0.72rem] text-muted">{o.customer.city}, {o.customer.state}</p>
+                      <p className="text-[0.72rem] text-muted tnum">{o.customer?.phone || '—'}</p>
+                      <p className="text-[0.72rem] text-muted">{[o.customer?.city, o.customer?.state].filter(Boolean).join(', ')}</p>
                     </td>
                     <td className="px-5 py-3">
                       <p className="line-clamp-1 max-w-[240px] text-[0.82rem]">
@@ -336,13 +337,13 @@ export default function AdminOrders() {
             {/* customer */}
             <div className="border border-line bg-bg2 p-5" style={{ borderRadius: 'var(--r-card)' }}>
               <p className="field-label">Customer</p>
-              <p className="text-[1.02rem] font-medium">{open.customer.name}</p>
+              <p className="text-[1.02rem] font-medium">{open.customer?.name || 'Guest'}</p>
               <ul className="mt-3 space-y-2 text-[0.83rem] text-muted">
-                <li className="flex items-center gap-2.5"><Phone size={13} strokeWidth={1.7} className="text-accent" /> {open.customer.phone}</li>
-                <li className="flex items-center gap-2.5"><Mail size={13} strokeWidth={1.7} className="text-accent" /> {open.customer.email}</li>
+                <li className="flex items-center gap-2.5"><Phone size={13} strokeWidth={1.7} className="text-accent" /> {open.customer?.phone || '—'}</li>
+                <li className="flex items-center gap-2.5"><Mail size={13} strokeWidth={1.7} className="text-accent" /> {open.customer?.email || '—'}</li>
                 <li className="flex gap-2.5">
                   <MapPin size={13} strokeWidth={1.7} className="mt-0.5 shrink-0 text-accent" />
-                  <span>{open.customer.address}, {open.customer.city}, {open.customer.state} — {open.customer.pincode}</span>
+                  <span>{[open.customer?.address, open.customer?.city, open.customer?.state].filter(Boolean).join(', ')}{open.customer?.pincode ? ` — ${open.customer.pincode}` : ''}</span>
                 </li>
               </ul>
             </div>
@@ -351,7 +352,7 @@ export default function AdminOrders() {
             <div>
               <p className="field-label">Items</p>
               <ul className="divide-y divide-line border border-line bg-surface" style={{ borderRadius: 'var(--r-card)' }}>
-                {open.items.map((it, i) => (
+                {(open.items || []).map((it, i) => (
                   <li key={i} className="flex items-center gap-3.5 p-3.5">
                     <ProductImage product={{ name: it.name, image: it.image }} className="h-12 w-12 shrink-0" imgClassName="rounded-[var(--r-btn)]" />
                     <div className="min-w-0 flex-1">

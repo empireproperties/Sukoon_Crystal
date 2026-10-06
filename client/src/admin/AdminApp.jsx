@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Component, useEffect, useState } from 'react';
 import { Routes, Route, NavLink, Navigate, useLocation, useNavigate, Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -60,6 +60,36 @@ const NAV_GROUPS = [
 ];
 
 const NAV = NAV_GROUPS.flatMap((g) => g.items);
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('Admin section error:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="my-6 space-y-3 rounded-[var(--r-card)] border border-sale/30 bg-sale/5 p-6 text-center">
+          <p className="text-base font-semibold text-sale">Unable to load this section</p>
+          <p className="mx-auto max-w-md text-xs text-muted">{this.state.error?.message || 'An unexpected error occurred.'}</p>
+          <button
+            onClick={() => { this.setState({ hasError: false, error: null }); window.location.reload(); }}
+            className="btn btn-sm btn-primary"
+          >
+            Reload section
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function Shell({ children }) {
   const [open, setOpen] = useState(false);
@@ -161,7 +191,11 @@ function Shell({ children }) {
           <span className="grid h-9 w-9 place-items-center rounded-full bg-brand-soft text-[0.82rem] font-semibold text-brand">SK</span>
         </header>
 
-        <main className="min-w-0 flex-1 px-5 py-6 lg:px-7">{children}</main>
+        <main className="min-w-0 flex-1 px-5 py-6 lg:px-7">
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
+        </main>
       </div>
       <Toasts />
     </div>

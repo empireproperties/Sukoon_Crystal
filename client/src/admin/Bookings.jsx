@@ -39,7 +39,8 @@ export default function AdminBookings() {
   const [offset, setOffset] = useState(0);
   const [open, setOpen] = useState(null);
 
-  const { data: bookings = [], loading, reload } = useAsync(() => api.bookings({}), []);
+  const { data: rawBookings, loading, reload } = useAsync(() => api.bookings({}), []);
+  const bookings = Array.isArray(rawBookings) ? rawBookings : [];
   const today = iso(new Date());
 
   const list = useMemo(() => {

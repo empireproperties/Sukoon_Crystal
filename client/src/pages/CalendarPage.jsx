@@ -26,7 +26,8 @@ export default function CalendarPage() {
   const [filter, setFilter] = useState('all');
   const [selected, setSelected] = useState(null);
 
-  const { data: events = [], loading } = useAsync(() => api.events(), []);
+  const { data: rawEvents, loading } = useAsync(() => api.events(), []);
+  const events = Array.isArray(rawEvents) ? rawEvents : [];
   const list = useMemo(
     () => (events || []).filter((e) => filter === 'all' || e.type === filter),
     [events, filter]

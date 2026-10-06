@@ -36,7 +36,8 @@ export default function AdminEvents() {
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  const { data: events = [], loading, reload } = useAsync(() => api.events(true), []);
+  const { data: rawEvents, loading, reload } = useAsync(() => api.events(true), []);
+  const events = Array.isArray(rawEvents) ? rawEvents : [];
   const today = iso(new Date());
 
   const stats = useMemo(() => ({

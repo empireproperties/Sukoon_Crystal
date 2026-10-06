@@ -678,7 +678,7 @@ const has = (hay, needle) => String(hay || "").toLowerCase().includes(String(nee
 
 app.get('/api/orders', auth, (req, res) => {
   const { status, q, name, phone, item } = req.query;
-  let list = db.orders;
+  let list = Array.isArray(db.orders) ? db.orders : [];
   if (status && status !== 'all') list = list.filter((o) => o.status === status);
 
   /* Separate fields rather than one box: the question is usually "what did
@@ -696,9 +696,9 @@ app.get('/api/orders', auth, (req, res) => {
   if (q) {
     const t = String(q).toLowerCase();
     list = list.filter((o) =>
-      [o.number, o.customer.name, o.customer.phone, o.customer.city, o.awb].join(' ').toLowerCase().includes(t));
+      [o.number, o.customer?.name, o.customer?.phone, o.customer?.city, o.awb].filter(Boolean).join(' ').toLowerCase().includes(t));
   }
-  res.json(list);
+  res.json(list || []);
 });
 
 app.get('/api/orders/track/:number', (req, res) => {

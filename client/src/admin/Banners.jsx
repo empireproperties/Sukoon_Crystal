@@ -88,7 +88,8 @@ export default function AdminBanners() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  const { data: banners = [], loading, reload } = useAsync(() => api.banners(true), []);
+  const { data: rawBanners, loading, reload } = useAsync(() => api.banners(true), []);
+  const banners = Array.isArray(rawBanners) ? rawBanners : [];
 
   const patch = (k, v) => setEditing((e) => ({ ...e, [k]: v }));
   const refreshAll = async () => { reload(); await refreshSettings(); };
