@@ -2081,7 +2081,7 @@ let unpersistedVisits = 0;
 let visitSaveTimer = null;
 function scheduleVisitPersist() {
   unpersistedVisits++;
-  if (unpersistedVisits >= 25) {
+  if (unpersistedVisits >= 250) {
     unpersistedVisits = 0;
     if (visitSaveTimer) clearTimeout(visitSaveTimer);
     visitSaveTimer = null;
@@ -2093,7 +2093,7 @@ function scheduleVisitPersist() {
       unpersistedVisits = 0;
       visitSaveTimer = null;
       save();
-    }, 60_000);
+    }, 120_000);
   }
 }
 
@@ -2302,7 +2302,15 @@ app.get('/api/health', (_req, res) => res.json({
 /* Serve the built SPA when it exists (single-command demo deploy). */
 const DIST = path.join(__dirname, '..', 'client', 'dist');
 if (fs.existsSync(DIST)) {
-  app.use(express.static(DIST));
+  app.use(express.static(DIST, {
+    maxAge: '1y',
+    immutable: true,
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+      }
+    },
+  }));
   app.get('*', (_req, res) => res.sendFile(path.join(DIST, 'index.html')));
 }
 
