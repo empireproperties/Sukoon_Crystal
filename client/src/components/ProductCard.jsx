@@ -122,11 +122,18 @@ function Card({ product, config }) {
             rather than pushing it back out of frame. */}
         <ProductImage product={product} className="aspect-square" imgClassName="object-top origin-top-left" zoom hoverSrc={armed ? second : ''} />
 
-        {config.bestseller && product.bestseller && (
-          <span className="pointer-events-none absolute right-2 top-2 rounded-full bg-accent px-2 py-0.5 text-[0.6rem] font-medium text-onbrand sm:right-2.5 sm:top-2.5 sm:px-2.5 sm:py-1 sm:text-[0.66rem]">
-            Bestseller
-          </span>
-        )}
+        <div className="pointer-events-none absolute right-2 top-2 flex flex-col items-end gap-1 sm:right-2.5 sm:top-2.5">
+          {product.bogo && (
+            <span className="rounded-full bg-sale px-2 py-0.5 text-[0.6rem] font-semibold text-white shadow-sm sm:px-2.5 sm:py-1 sm:text-[0.66rem]">
+              Buy 1 Get 1 Free
+            </span>
+          )}
+          {config.bestseller && product.bestseller && (
+            <span className="rounded-full bg-accent px-2 py-0.5 text-[0.6rem] font-medium text-onbrand sm:px-2.5 sm:py-1 sm:text-[0.66rem]">
+              Bestseller
+            </span>
+          )}
+        </div>
 
         {/* Bottom-left, not top-left. Every product photo has the Sukoon
             medallion burnt into its top-left corner, and the flag landed
