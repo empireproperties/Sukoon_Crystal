@@ -144,7 +144,7 @@ export default function Product() {
 
   const { data: p, loading } = useAsync(() => api.product(slug), [slug]);
 
-  useEffect(() => { setQty(1); setActiveImg(0); setAdded(false); setTab('details'); setWish(false); }, [slug]);
+  useEffect(() => { setQty(p?.bogo ? 2 : 1); setActiveImg(0); setAdded(false); setTab('details'); setWish(false); }, [slug, p?.bogo]);
   useEffect(() => { if (p?.id) remember(p); }, [p, remember]);
   useEffect(() => { if (p?.id) trackViewContent(p); }, [p?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 

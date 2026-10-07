@@ -2,26 +2,27 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles, PhoneCall, ShoppingBag } from 'lucide-react';
+import ProductImage from './ProductImage.jsx';
 
 /* Hand-rolled rather than a confetti package: sixty absolutely positioned
    squares animated by framer-motion, which is already here, instead of another
    dependency and another canvas on the page. */
-const COLOURS = ['#d4af16', '#2a513c', '#b0803a', '#4b5296', '#c47a35', '#fbf9f4'];
+const COLOURS = ['#d4af16', '#ff4d4f', '#faad14', '#e81123', '#b0803a', '#4b5296', '#ff85c0', '#fbf9f4'];
 
 function Confetti() {
   /* Fixed once per mount: regenerating on render would restart every piece
      half way down the screen. */
   const pieces = useMemo(
-    () => Array.from({ length: 60 }, (_, i) => ({
+    () => Array.from({ length: 70 }, (_, i) => ({
       id: i,
       left: Math.random() * 100,
-      size: 6 + Math.random() * 7,
-      delay: Math.random() * 0.5,
+      size: 6 + Math.random() * 8,
+      delay: Math.random() * 0.4,
       duration: 2.2 + Math.random() * 1.6,
       drift: (Math.random() - 0.5) * 160,
       spin: (Math.random() - 0.5) * 900,
       colour: COLOURS[i % COLOURS.length],
-      round: Math.random() > 0.6,
+      round: Math.random() > 0.5,
     })),
     []
   );
@@ -49,13 +50,11 @@ function Confetti() {
 }
 
 /**
- * What happens the moment a flagged piece reaches the cart.
- *
- * The bracelet is chosen from a birth chart, so the useful next step is the
- * chart itself, and after that a call with Swati. Shown once per add, and
- * never in the way: everything here is a way forward, including the cart.
+ * What happens the moment a flagged or BOGO piece reaches the cart.
  */
 export default function CelebrateDialog({ product, onClose, onViewCart }) {
+  const isBogo = Boolean(product?.isBogo || product?.bogo);
+
   return (
     <AnimatePresence>
       {product && (
@@ -88,41 +87,81 @@ export default function CelebrateDialog({ product, onClose, onViewCart }) {
                 <X size={16} />
               </button>
 
-              <p className="text-[0.68rem] uppercase tracking-[0.24em] text-muted">Added to your cart</p>
-              <h2 className="mt-2 font-[var(--font-display)] text-[1.45rem] leading-snug">{product.name}</h2>
+              {isBogo ? (
+                <>
+                  <div className="mx-auto inline-flex items-center gap-1.5 rounded-full border border-sale/40 bg-sale/10 px-3.5 py-1 text-[0.76rem] font-semibold text-sale">
+                    🌸 Jai Mata Di · Happy Navratri 🪔
+                  </div>
 
-              <p className="mx-auto mt-3 max-w-[320px] text-[0.88rem] leading-relaxed text-muted">
-                This piece works best when it is chosen for your chart. Read yours free,
-                then talk it through with Swati.
-              </p>
+                  <h2 className="mt-3 font-[var(--font-display)] text-[1.45rem] leading-snug">
+                    Buy 1 Get 1 Free!
+                  </h2>
 
-              <Link
-                to="/birth-chart"
-                onClick={onClose}
-                className="mt-5 flex items-center justify-between gap-3 border border-line bg-bg2 p-3.5 text-left transition-colors hover:border-brand"
-                style={{ borderRadius: 'var(--r-btn)' }}
-              >
-                <span className="inline-flex items-center gap-2.5 text-[0.88rem]">
-                  <Sparkles size={15} strokeWidth={1.9} className="text-accent" />
-                  Get your free birth chart
-                </span>
-                <span className="rounded-full bg-brand px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.1em] text-onbrand">Free</span>
-              </Link>
+                  <p className="mx-auto mt-2 max-w-[320px] text-[0.86rem] leading-relaxed text-muted">
+                    As a special festive blessing, we have automatically added <strong>2 units</strong> to your cart — your second one is <strong>100% FREE</strong>!
+                  </p>
 
-              {/* The one the shop actually wants pressed. */}
-              <Link to="/book" onClick={onClose} className="btn btn-primary btn-lg mt-3 w-full">
-                <PhoneCall size={16} strokeWidth={1.9} /> Book a free consultation call
-              </Link>
-              <p className="mt-2 text-[0.74rem] text-muted">
-                Complimentary, no obligation — she will tell you if you do not need it.
-              </p>
+                  <div className="mt-4 flex items-center gap-3.5 rounded-[var(--r-btn)] border border-line bg-bg2 p-3 text-left">
+                    <ProductImage product={product} className="h-14 w-14 shrink-0 rounded-[var(--r-btn)]" />
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-1 text-[0.86rem] font-medium">{product.name}</p>
+                      <p className="text-[0.74rem] text-muted">2 units in cart (1 Paid + 1 FREE)</p>
+                    </div>
+                    <span className="badge badge-sale shrink-0">1 Free 🎁</span>
+                  </div>
 
-              <button
-                onClick={onViewCart}
-                className="mt-4 inline-flex items-center gap-1.5 text-[0.82rem] text-muted underline underline-offset-2 hover:text-ink"
-              >
-                <ShoppingBag size={13} strokeWidth={1.8} /> View my cart
-              </button>
+                  <button
+                    onClick={onViewCart}
+                    className="btn btn-primary btn-lg mt-5 w-full !text-[0.92rem]"
+                  >
+                    <ShoppingBag size={16} strokeWidth={2} /> View Cart & Checkout
+                  </button>
+
+                  <button
+                    onClick={onClose}
+                    className="mt-3 block w-full text-[0.78rem] text-muted underline underline-offset-2 hover:text-ink"
+                  >
+                    Continue shopping
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-[0.68rem] uppercase tracking-[0.24em] text-muted">Added to your cart</p>
+                  <h2 className="mt-2 font-[var(--font-display)] text-[1.45rem] leading-snug">{product.name}</h2>
+
+                  <p className="mx-auto mt-3 max-w-[320px] text-[0.88rem] leading-relaxed text-muted">
+                    This piece works best when it is chosen for your chart. Read yours free,
+                    then talk it through with Swati.
+                  </p>
+
+                  <Link
+                    to="/birth-chart"
+                    onClick={onClose}
+                    className="mt-5 flex items-center justify-between gap-3 border border-line bg-bg2 p-3.5 text-left transition-colors hover:border-brand"
+                    style={{ borderRadius: 'var(--r-btn)' }}
+                  >
+                    <span className="inline-flex items-center gap-2.5 text-[0.88rem]">
+                      <Sparkles size={15} strokeWidth={1.9} className="text-accent" />
+                      Get your free birth chart
+                    </span>
+                    <span className="rounded-full bg-brand px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.1em] text-onbrand">Free</span>
+                  </Link>
+
+                  <Link to="/book" onClick={onClose} className="btn btn-primary btn-lg mt-3 w-full">
+                    <PhoneCall size={16} strokeWidth={1.9} /> Book a free consultation call
+                  </Link>
+                  <p className="mt-2 text-[0.74rem] text-muted">
+                    Complimentary, no obligation — she will tell you if you do not need it.
+                  </p>
+
+                  <button
+                    onClick={onViewCart}
+                    className="mt-4 inline-flex items-center gap-1.5 text-[0.82rem] text-muted underline underline-offset-2 hover:text-ink"
+                  >
+                    <ShoppingBag size={13} strokeWidth={1.8} /> View my cart
+                  </button>
+                </>
+              )}
             </motion.div>
           </motion.div>
         </>

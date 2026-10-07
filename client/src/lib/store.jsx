@@ -12,8 +12,9 @@ const readCart = () => {
 function cartReducer(state, action) {
   switch (action.type) {
     case 'add': {
+      const isBogo = Boolean(action.product.bogo);
+      const qty = action.qty !== undefined ? action.qty : (isBogo ? 2 : 1);
       const found = state.find((l) => l.productId === action.product.id);
-      const qty = action.qty || 1;
       if (found) return state.map((l) => (l.productId === action.product.id ? { ...l, qty: l.qty + qty } : l));
       const p = action.product;
       return [...state, {
@@ -129,13 +130,19 @@ export function ShopProvider({ children }) {
       shipping,
       freeDelivery: { above: freeAbove, enabled: removeAbove },
       addToCart: (product, qty) => {
-        dispatch({ type: 'add', product, qty });
-        trackAddToCart(product, qty || 1);
-        /* A flagged piece opens its own celebration rather than the drawer.
-           Both at once and the visitor closes two panels to get back to the
-           page, which is how a moment becomes an obstacle. */
-        if (product?.celebrate) setCelebrated(product);
-        else setDrawerOpen(true);
+        const isBogo = Boolean(product?.bogo);
+        const resolvedQty = isBogo && (!qty || qty === 1) ? 2 : (qty || 1);
+        dispatch({ type: 'add', product, qty: resolvedQty });
+        trackAddToCart(product, resolvedQty);
+        /* BOGO products open celebration with Navratri blessings and confetti.
+           A flagged piece opens its own celebration. Other items open the cart drawer. */
+        if (isBogo) {
+          setCelebrated({ ...product, isBogo: true, addedQty: resolvedQty });
+        } else if (product?.celebrate) {
+          setCelebrated(product);
+        } else {
+          setDrawerOpen(true);
+        }
       },
       celebrated,
       clearCelebrated: () => setCelebrated(null),
