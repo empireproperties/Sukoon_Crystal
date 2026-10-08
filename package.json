@@ -13,7 +13,8 @@
     "sync": "node server/import-shopify.js --all",
     "images:local": "node server/download-images.js",
     "migrate": "node server/migrate-to-mongo.js --clean-demo --cloudinary",
-    "migrate:dry": "node server/migrate-to-mongo.js --clean-demo --cloudinary --dry-run"
+    "migrate:dry": "node server/migrate-to-mongo.js --clean-demo --cloudinary --dry-run",
+    "test": "node server/test-suite.js"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
