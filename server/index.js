@@ -30,6 +30,7 @@ import {
 
 import { astroEnabled, searchCity, vedicChart, birthKey } from './astro.js';
 import { buildReading, recommendProducts } from './reading.js';
+import { sendOrderConfirmationEmail } from './email.js';
 
 import {
   isConfigured as razorpayReady,
@@ -1054,6 +1055,10 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
   commitStock(totals.priced);
   redeemCoupon(totals.coupon?.id);
   save();
+
+  /* Send order confirmation email — fire-and-forget */
+  sendOrderConfirmationEmail(order).catch(() => {});
+
   res.status(201).json(order);
 });
 
@@ -1200,6 +1205,10 @@ function fulfilPayment(intent, paymentId) {
   intent.status = 'paid';
   intent.orderId = order.id;
   save();
+
+  /* Send order confirmation email — fire-and-forget, never blocks the response */
+  sendOrderConfirmationEmail(order).catch(() => {});
+
   return order;
 }
 
