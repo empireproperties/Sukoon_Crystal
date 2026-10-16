@@ -95,6 +95,7 @@ export const api = {
   paymentConfig: () => request('/payments/config'),
   createPayment: (body) => request('/payments/razorpay/order', { method: 'POST', body }),
   verifyPayment: (body) => request('/payments/razorpay/verify', { method: 'POST', body }),
+  syncPayments: () => request('/payments/reconcile', { method: 'POST', auth: true }),
 
   banners: (all) => request(`/banners${all ? '?all=1' : ''}`),
   createBanner: (body) => request('/banners', { method: 'POST', body, auth: true }),

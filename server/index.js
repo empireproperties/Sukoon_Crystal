@@ -38,6 +38,7 @@ import {
   createOrder as createRzpOrder,
   verifyPaymentSignature,
   verifyWebhookSignature,
+  fetchOrderPayments,
 } from './razorpay.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -684,6 +685,8 @@ app.get('/api/orders', auth, async (req, res) => {
   } catch (e) {
     /* fallback to in-memory cache */
   }
+  /* Trigger non-blocking auto-reconciliation so any unconfirmed payments are synced */
+  runAutoReconciliation().catch(() => {});
   const { status, q, name, phone, item } = req.query;
   let list = Array.isArray(db.orders) ? db.orders : [];
   if (status && status !== 'all') list = list.filter((o) => o.status === status);
@@ -1197,8 +1200,18 @@ app.post('/api/payments/razorpay/order', async (req, res) => {
 
 /** Turns a verified payment intent into a real order. Safe to call twice. */
 function fulfilPayment(intent, paymentId) {
-  const existing = db.orders.find((o) => o.razorpayPaymentId === paymentId);
-  if (existing) return existing;
+  const existing = (db.orders || []).find((o) =>
+    (paymentId && o.razorpayPaymentId === paymentId) ||
+    (intent.razorpayOrderId && o.razorpayOrderId === intent.razorpayOrderId)
+  );
+  if (existing) {
+    if (intent.status !== 'paid') {
+      intent.status = 'paid';
+      intent.orderId = existing.id;
+      save();
+    }
+    return existing;
+  }
 
   /* `amount` is what Razorpay charged: the whole total for a prepaid order,
      the advance for COD. Intents from before COD advances have no `mode` and
@@ -1259,6 +1272,81 @@ app.post('/api/payments/razorpay/webhook', (req, res) => {
   }
   /* Always 200 on a valid signature, or Razorpay keeps retrying. */
   res.json({ ok: true });
+});
+
+/* ------------------------------------------------------------------ Layer 2: Auto-Reconciliation */
+/**
+ * Automatically reconciles pending payment intents against the Razorpay API.
+ * Recovers orders when a customer's mobile browser dropped or closed before /verify.
+ */
+async function reconcilePendingPayments() {
+  if (!razorpayReady()) return { scanned: 0, recovered: 0 };
+
+  const now = Date.now();
+  const pending = (db.payments || []).filter((p) => {
+    if (p.status !== 'created' || !p.razorpayOrderId) return false;
+    const ageMs = now - new Date(p.createdAt).getTime();
+    return ageMs >= 60_000 && ageMs <= 14 * 24 * 60 * 60_000;
+  });
+
+  if (!pending.length) return { scanned: 0, recovered: 0 };
+
+  let recovered = 0;
+  for (const intent of pending) {
+    try {
+      const existing = (db.orders || []).find((o) => o.razorpayOrderId === intent.razorpayOrderId);
+      if (existing) {
+        intent.status = 'paid';
+        intent.orderId = existing.id;
+        continue;
+      }
+
+      const paymentList = await fetchOrderPayments(intent.razorpayOrderId);
+      const items = paymentList?.items || [];
+      const successful = items.find((pay) => pay.status === 'captured' || pay.status === 'authorized');
+
+      if (successful) {
+        console.log(`  [Reconcile] Recovered paid order ${intent.razorpayOrderId} (Payment ID: ${successful.id})`);
+        const order = fulfilPayment(intent, successful.id);
+        recovered++;
+        console.log(`  [Reconcile] Created order #${order.number} for ${order.customer?.name} (${order.customer?.email})`);
+      }
+    } catch (err) {
+      console.warn(`  [Reconcile] Check failed for ${intent.razorpayOrderId}:`, err.message);
+    }
+  }
+
+  if (recovered > 0) {
+    save();
+  }
+
+  return { scanned: pending.length, recovered };
+}
+
+let reconciling = false;
+async function runAutoReconciliation() {
+  if (reconciling) return;
+  reconciling = true;
+  try {
+    await reconcilePendingPayments();
+  } catch (e) {
+    console.warn('  ! auto-reconciliation error:', e.message);
+  } finally {
+    reconciling = false;
+  }
+}
+
+/* Background scheduler: check every 3 minutes */
+setInterval(runAutoReconciliation, 3 * 60 * 1000);
+
+/* Admin trigger endpoint */
+app.post('/api/payments/reconcile', auth, async (_req, res) => {
+  try {
+    const result = await reconcilePendingPayments();
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 /* ------------------------------------------------------------------ banners */
@@ -2456,4 +2544,7 @@ if (admin.created && admin.generated) {
   console.log(`  Admin       ->  created ${admin.email} from ADMIN_PASSWORD`);
 }
 
-app.listen(PORT, () => console.log(`  Sukoon API  ->  http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`  Sukoon API  ->  http://localhost:${PORT}`);
+  runAutoReconciliation().catch(() => {});
+});

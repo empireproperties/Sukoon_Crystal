@@ -75,3 +75,15 @@ export async function fetchPayment(paymentId) {
   const rzp = await sdk();
   return rzp.payments.fetch(paymentId);
 }
+
+/** Fetch an order's status from Razorpay. */
+export async function fetchOrder(orderId) {
+  const rzp = await sdk();
+  return rzp.orders.fetch(orderId);
+}
+
+/** Fetch all payment attempts for a given Razorpay order. */
+export async function fetchOrderPayments(orderId) {
+  const rzp = await sdk();
+  return rzp.orders.fetchPayments(orderId);
+}

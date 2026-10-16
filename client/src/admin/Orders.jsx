@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Search, ShoppingCart, Truck, CheckCircle2, Clock, Package, AlertTriangle,
-  ChevronRight, MapPin, Phone, Mail, ArrowRight, ReceiptText,
+  ChevronRight, MapPin, Phone, Mail, ArrowRight, ReceiptText, RefreshCw,
 } from 'lucide-react';
 
 import { api, inr, dateLabel } from '../lib/api.js';
@@ -46,6 +46,7 @@ export default function AdminOrders() {
   const [open, setOpen] = useState(null);
   const [invoiceFor, setInvoiceFor] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const { data: rawOrders, loading, reload } = useAsync(
     () => api.orders({ status, q, name, phone, item }),
@@ -98,6 +99,24 @@ export default function AdminOrders() {
     }
   };
 
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const res = await api.syncPayments();
+      if (res.recovered > 0) {
+        toast(`Successfully recovered ${res.recovered} paid order${res.recovered > 1 ? 's' : ''}!`, 'success');
+      } else {
+        toast(`All payments are in sync (scanned ${res.scanned || 0} pending sessions).`, 'success');
+      }
+      reload();
+      all.reload();
+    } catch (e) {
+      toast(`Sync failed: ${e.message}`, 'error');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const saveMeta = async (patch) => {
     const updated = await api.updateOrder(open.id, patch);
     setOpen(updated);
@@ -108,20 +127,32 @@ export default function AdminOrders() {
 
   return (
     <div className="space-y-6">
-      {/* status filter rail */}
-      <div className="flex flex-wrap gap-2">
-        {[['all', 'All orders'], ...Object.entries(META).map(([k, v]) => [k, v.label])].map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setStatus(key)}
-            className={`flex items-center gap-2 rounded-[var(--r-btn)] border px-3.5 py-2 text-[0.8rem] transition-colors ${
-              status === key ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-surface text-muted hover:border-brand hover:text-ink'
-            }`}
-          >
-            {label}
-            <span className="rounded-full bg-bg2 px-1.5 text-[0.68rem] tnum">{counts[key] ?? 0}</span>
-          </button>
-        ))}
+      {/* status filter rail + sync button */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          {[['all', 'All orders'], ...Object.entries(META).map(([k, v]) => [k, v.label])].map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setStatus(key)}
+              className={`flex items-center gap-2 rounded-[var(--r-btn)] border px-3.5 py-2 text-[0.8rem] transition-colors ${
+                status === key ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-surface text-muted hover:border-brand hover:text-ink'
+              }`}
+            >
+              {label}
+              <span className="rounded-full bg-bg2 px-1.5 text-[0.68rem] tnum">{counts[key] ?? 0}</span>
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={handleSync}
+          disabled={syncing}
+          className="btn-ghost !py-2 text-[0.8rem] flex items-center gap-1.5 border border-line bg-surface hover:border-brand transition-colors"
+          title="Reconcile pending payments directly with Razorpay"
+        >
+          <RefreshCw size={13} className={syncing ? 'animate-spin text-brand' : 'text-muted'} />
+          {syncing ? 'Checking Razorpay...' : 'Sync Razorpay'}
+        </button>
       </div>
 
       {/* Name, phone and piece are separate fields on purpose. The questions
