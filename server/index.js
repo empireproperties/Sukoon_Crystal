@@ -677,7 +677,13 @@ const FLOW = ['placed', 'confirmed', 'packed', 'in_transit', 'delivered'];
 const digitsOf = (s) => String(s || "").split("").filter((c) => c >= "0" && c <= "9").join("");
 const has = (hay, needle) => String(hay || "").toLowerCase().includes(String(needle).toLowerCase());
 
-app.get('/api/orders', auth, (req, res) => {
+app.get('/api/orders', auth, async (req, res) => {
+  try {
+    const fresh = await reloadCollection('orders');
+    if (Array.isArray(fresh)) db.orders = fresh;
+  } catch (e) {
+    /* fallback to in-memory cache */
+  }
   const { status, q, name, phone, item } = req.query;
   let list = Array.isArray(db.orders) ? db.orders : [];
   if (status && status !== 'all') list = list.filter((o) => o.status === status);
@@ -702,8 +708,17 @@ app.get('/api/orders', auth, (req, res) => {
   res.json(list || []);
 });
 
-app.get('/api/orders/track/:number', (req, res) => {
-  const o = db.orders.find((x) => x.number.toLowerCase() === String(req.params.number).toLowerCase());
+app.get('/api/orders/track/:number', async (req, res) => {
+  let o = (db.orders || []).find((x) => x.number?.toLowerCase() === String(req.params.number).toLowerCase());
+  if (!o) {
+    try {
+      const fresh = await reloadCollection('orders');
+      if (Array.isArray(fresh)) {
+        db.orders = fresh;
+        o = fresh.find((x) => x.number?.toLowerCase() === String(req.params.number).toLowerCase());
+      }
+    } catch {}
+  }
   if (!o) return res.status(404).json({ error: 'No order found with that number.' });
   res.json({
     number: o.number, status: o.status, createdAt: o.createdAt, timeline: o.timeline,

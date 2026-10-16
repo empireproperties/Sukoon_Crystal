@@ -7,9 +7,11 @@
 
 import { Resend } from 'resend';
 
-const resend = process.env.RESEND_API_KEY
-  ? new Resend(process.env.RESEND_API_KEY)
-  : null;
+function getResend() {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return null;
+  return new Resend(key);
+}
 
 const FROM = 'Sukoon Crystal Solutions <orders@sukoon-crystalsolutions.com>';
 const SITE_URL = 'https://sukoon-crystalsolutions.com';
@@ -21,6 +23,7 @@ const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
 
 /* ── main export ── */
 export async function sendOrderConfirmationEmail(order) {
+  const resend = getResend();
   if (!resend) {
     console.log('  ℹ email: RESEND_API_KEY not set — skipping order confirmation email');
     return;
