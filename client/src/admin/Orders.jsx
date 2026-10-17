@@ -52,9 +52,16 @@ export default function AdminOrders() {
     () => api.orders({ status, q, name, phone, item }),
     [status, q, name, phone, item]
   );
-  const orders = Array.isArray(rawOrders) ? rawOrders : [];
+  const orders = useMemo(() => {
+    if (!Array.isArray(rawOrders)) return [];
+    return [...rawOrders].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  }, [rawOrders]);
+
   const all = useAsync(() => api.orders({}), []);
-  const allOrders = Array.isArray(all.data) ? all.data : [];
+  const allOrders = useMemo(() => {
+    if (!Array.isArray(all.data)) return [];
+    return [...all.data].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  }, [all.data]);
 
   const counts = useMemo(() => {
     return {

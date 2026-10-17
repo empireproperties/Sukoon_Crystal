@@ -709,6 +709,8 @@ app.get('/api/orders', auth, async (req, res) => {
     list = list.filter((o) =>
       [o.number, o.customer?.name, o.customer?.phone, o.customer?.city, o.awb].filter(Boolean).join(' ').toLowerCase().includes(t));
   }
+
+  list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
   res.json(list || []);
 });
 

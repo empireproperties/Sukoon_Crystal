@@ -110,12 +110,13 @@ export default function CelebrateDialog({ product, onClose, onViewCart }) {
                     <span className="badge badge-sale shrink-0">1 Free 🎁</span>
                   </div>
 
-                  <button
-                    onClick={onViewCart}
-                    className="btn btn-primary btn-lg mt-5 w-full !text-[0.92rem]"
+                  <Link
+                    to="/checkout"
+                    onClick={onClose}
+                    className="btn btn-primary btn-lg mt-5 flex w-full items-center justify-center gap-2 !text-[0.92rem]"
                   >
-                    <ShoppingBag size={16} strokeWidth={2} /> View Cart & Checkout
-                  </button>
+                    <ShoppingBag size={16} strokeWidth={2} /> Proceed to Checkout →
+                  </Link>
 
                   <button
                     onClick={onClose}

@@ -470,7 +470,7 @@ export default function Product() {
               </div>
               <Link
                 to="/checkout"
-                onClick={() => p.stock > 0 && addToCart(p, qty)}
+                onClick={() => p.stock > 0 && addToCart(p, qty, { silent: true })}
                 className={`btn btn-accent btn-lg mt-2.5 w-full ${p.stock === 0 ? 'pointer-events-none opacity-40' : ''}`}
               >
                 Buy it now

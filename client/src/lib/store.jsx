@@ -129,11 +129,12 @@ export function ShopProvider({ children }) {
       cart, count, subtotal,
       shipping,
       freeDelivery: { above: freeAbove, enabled: removeAbove },
-      addToCart: (product, qty) => {
+      addToCart: (product, qty, options = {}) => {
         const isBogo = Boolean(product?.bogo);
         const resolvedQty = isBogo && (!qty || qty === 1) ? 2 : (qty || 1);
         dispatch({ type: 'add', product, qty: resolvedQty });
         trackAddToCart(product, resolvedQty);
+        if (options.silent) return;
         /* BOGO products open celebration with Navratri blessings and confetti.
            A flagged piece opens its own celebration. Other items open the cart drawer. */
         if (isBogo) {
