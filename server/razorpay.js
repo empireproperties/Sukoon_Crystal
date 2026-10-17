@@ -87,3 +87,12 @@ export async function fetchOrderPayments(orderId) {
   const rzp = await sdk();
   return rzp.orders.fetchPayments(orderId);
 }
+
+/** Fetch all captured/attempted payments from Razorpay in a time window. */
+export async function listPayments({ from, to, count = 100 } = {}) {
+  const rzp = await sdk();
+  const params = { count };
+  if (from) params.from = Math.floor(from);
+  if (to) params.to = Math.floor(to);
+  return rzp.payments.all(params);
+}

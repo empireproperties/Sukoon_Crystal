@@ -39,6 +39,7 @@ import {
   verifyPaymentSignature,
   verifyWebhookSignature,
   fetchOrderPayments,
+  listPayments,
 } from './razorpay.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1339,10 +1340,151 @@ async function runAutoReconciliation() {
 /* Background scheduler: check every 3 minutes */
 setInterval(runAutoReconciliation, 3 * 60 * 1000);
 
-/* Admin trigger endpoint */
+/* ------------------------------------------------------------------ Nightly 10 PM IST 24h Audit */
+/**
+ * Calculates milliseconds from right now until the next 10:00 PM IST (22:00 IST = 16:30 UTC).
+ */
+function msUntilNext10pmIST() {
+  const now = new Date();
+  const target = new Date(now);
+  target.setUTCHours(16, 30, 0, 0); // 16:30 UTC = 22:00 IST (10:00 PM IST)
+
+  if (now.getTime() >= target.getTime()) {
+    // If today's 10:00 PM IST has already passed, schedule for tomorrow
+    target.setUTCDate(target.getUTCDate() + 1);
+  }
+
+  return target.getTime() - now.getTime();
+}
+
+/**
+ * Nightly 10:00 PM IST 24h Audit:
+ * Queries Razorpay for all captured payments in the last 24 hours,
+ * verifies each against db.orders, and automatically creates any missing orders.
+ */
+async function runNightly24hAudit() {
+  if (!razorpayReady()) return { scanned: 0, recovered: 0 };
+
+  console.log('  [Nightly Audit 10:00 PM IST] Starting 24-hour Razorpay reconciliation audit...');
+
+  try {
+    const fresh = await reloadCollection('orders');
+    if (Array.isArray(fresh)) db.orders = fresh;
+  } catch {}
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  const fromSec = nowSec - (24 * 60 * 60); // 24 hours ago
+
+  let paymentList;
+  try {
+    paymentList = await listPayments({ from: fromSec, to: nowSec, count: 100 });
+  } catch (err) {
+    console.error('  ! [Nightly Audit] Failed to fetch payments from Razorpay:', err.message);
+    return { error: err.message };
+  }
+
+  const items = paymentList?.items || [];
+  const captured = items.filter((p) => p.status === 'captured');
+  console.log(`  [Nightly Audit] Auditing ${captured.length} captured Razorpay payments from the last 24h.`);
+
+  let recovered = 0;
+  for (const pay of captured) {
+    const orderId = pay.order_id;
+    const paymentId = pay.id;
+
+    // Check if order exists in db.orders
+    const exists = (db.orders || []).find((o) =>
+      o.razorpayPaymentId === paymentId || (orderId && o.razorpayOrderId === orderId)
+    );
+
+    if (exists) continue; // Already mapped and confirmed
+
+    // Found an unmapped captured payment
+    console.warn(`  [Nightly Audit] ⚠️ Missing order found for payment ${paymentId} (${orderId}) — ₹${pay.amount / 100}`);
+
+    let intent = (db.payments || []).find((p) => p.razorpayOrderId === orderId);
+
+    if (intent) {
+      const order = fulfilPayment(intent, paymentId);
+      recovered++;
+      console.log(`  [Nightly Audit] ✅ Recovered order #${order.number} for ${order.customer?.name} (${order.customer?.email})`);
+    } else {
+      // Reconstruct order from Razorpay payment details & notes
+      const customer = {
+        name: pay.notes?.customer || pay.notes?.name || 'Customer',
+        email: pay.email || '',
+        phone: pay.contact || pay.notes?.phone || '',
+        address: pay.notes?.address || '',
+        city: pay.notes?.city || '',
+      };
+      const amountRupees = Math.round(pay.amount / 100);
+      const fallbackIntent = {
+        id: `pay_audit_${paymentId}`,
+        razorpayOrderId: orderId || `order_${paymentId}`,
+        mode: 'Prepaid',
+        amount: amountRupees,
+        totals: {
+          subtotal: amountRupees,
+          shipping: 0,
+          discount: 0,
+          total: amountRupees,
+          priced: [
+            {
+              productId: 'prd_recovered',
+              name: pay.description || 'Sukoon Order',
+              qty: 1,
+              price: amountRupees,
+            }
+          ]
+        },
+        customer,
+        createdAt: new Date(pay.created_at * 1000).toISOString(),
+      };
+      const order = fulfilPayment(fallbackIntent, paymentId);
+      recovered++;
+      console.log(`  [Nightly Audit] ✅ Created order #${order.number} for ${customer.name}`);
+    }
+  }
+
+  if (recovered > 0) {
+    await saveNow();
+  }
+
+  console.log(`  [Nightly Audit 10:00 PM IST] Audit complete. Scanned: ${captured.length}, Recovered: ${recovered}.`);
+  return { scanned: captured.length, recovered };
+}
+
+/**
+ * Schedules the recurring nightly 10:00 PM IST audit.
+ */
+function scheduleNightly10pmAudit() {
+  const ms = msUntilNext10pmIST();
+  const hours = (ms / (1000 * 60 * 60)).toFixed(1);
+  console.log(`  [Nightly Audit] Scheduled next 10:00 PM IST audit in ${hours} hours.`);
+
+  setTimeout(async () => {
+    try {
+      await runNightly24hAudit();
+    } catch (err) {
+      console.error('  ! [Nightly Audit] Execution error:', err.message);
+    }
+    scheduleNightly10pmAudit();
+  }, ms);
+}
+
+/* Admin trigger endpoints */
 app.post('/api/payments/reconcile', auth, async (_req, res) => {
   try {
     const result = await reconcilePendingPayments();
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/payments/audit-24h', auth, async (_req, res) => {
+  try {
+    const result = await runNightly24hAudit();
     res.json({ ok: true, ...result });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -2547,4 +2689,5 @@ if (admin.created && admin.generated) {
 app.listen(PORT, () => {
   console.log(`  Sukoon API  ->  http://localhost:${PORT}`);
   runAutoReconciliation().catch(() => {});
+  scheduleNightly10pmAudit();
 });
