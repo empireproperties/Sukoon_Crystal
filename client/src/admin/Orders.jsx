@@ -128,6 +128,7 @@ export default function AdminOrders() {
     const updated = await api.updateOrder(open.id, patch);
     setOpen(updated);
     reload();
+    all.reload();
   };
 
   const nextStatus = open ? FLOW[FLOW.indexOf(open.status) + 1] : null;

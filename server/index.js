@@ -1083,7 +1083,7 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
   res.status(201).json(order);
 });
 
-app.put('/api/orders/:id', auth, (req, res) => {
+app.put('/api/orders/:id', auth, async (req, res) => {
   const o = find('orders', req.params.id);
   if (!o) return res.status(404).json({ error: 'Not found' });
   const { status, notes, courier, awb } = req.body || {};
@@ -1098,7 +1098,7 @@ app.put('/api/orders/:id', auth, (req, res) => {
   if (notes !== undefined) o.notes = notes;
   if (courier) o.courier = courier;
   if (awb) o.awb = awb;
-  save();
+  await saveNow();
   res.json(o);
 });
 
@@ -1122,8 +1122,9 @@ app.get('/api/orders/:id/invoice', optionalCustomer, async (req, res) => {
   res.json(ensureInvoice(order));
 });
 
-app.delete('/api/orders/:id', auth, (req, res) => {
+app.delete('/api/orders/:id', auth, async (req, res) => {
   write('orders', db.orders.filter((o) => o.id !== req.params.id));
+  await saveNow();
   res.json({ ok: true });
 });
 

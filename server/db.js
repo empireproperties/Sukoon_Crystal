@@ -215,6 +215,11 @@ export function load() {
 
 /** Reloads a specific collection fresh from the database (e.g. for credential checks). */
 export async function reloadCollection(name) {
+  if (writeTimer) {
+    clearTimeout(writeTimer);
+    writeTimer = null;
+    await flush();
+  }
   if (pgDriver) {
     const docs = await pgDriver.loadCollection(name);
     if (cache) {
