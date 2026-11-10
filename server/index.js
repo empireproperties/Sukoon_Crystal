@@ -34,12 +34,15 @@ import { sendOrderConfirmationEmail } from './email.js';
 
 import {
   isConfigured as razorpayReady,
+  isWebhookConfigured as rzpWebhookReady,
   publicKey as rzpPublicKey,
   createOrder as createRzpOrder,
   verifyPaymentSignature,
   verifyWebhookSignature,
   fetchOrderPayments,
-  listPayments,
+  fetchPayment,
+  fetchAllPayments,
+  capturePayment,
 } from './razorpay.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -141,7 +144,7 @@ function upsert(coll, id, patch) {
   const i = list.findIndex((x) => x.id === id);
   if (i === -1) return null;
   list[i] = { ...list[i], ...patch, id };
-  save();
+  save(coll);
   return list[i];
 }
 
@@ -487,16 +490,6 @@ app.get('/api/account/perks', requireCustomer, (req, res) => {
   });
 });
 
-/* ------------------------------------------------------------------ health */
-/* Lightweight keep-alive endpoint. The Cloudflare Worker pings this every
-   5 minutes (via a cron trigger) so Render's free-tier server never hibernates.
-   When it does hibernate, in-flight requests get 429 "hibernate-rate-limited"
-   until it restarts -- this prevents that entirely. No auth, no DB hit. */
-app.get('/api/health', (_req, res) => {
-  res.set('Cache-Control', 'no-store');
-  res.json({ ok: true, ts: Date.now() });
-});
-
 /* ----------------------------------------------------------------- settings */
 /* `settings` is served to every visitor, so anything secret that ends up in it
    must never leave this function. auth.js falls back to storing a generated
@@ -696,8 +689,10 @@ app.get('/api/orders', auth, async (req, res) => {
   } catch (e) {
     /* fallback to in-memory cache */
   }
-  /* Trigger non-blocking auto-reconciliation so any unconfirmed payments are synced */
-  runAutoReconciliation().catch(() => {});
+  /* Trigger non-blocking auto-reconciliation (throttled to max once per 30s) */
+  if (Date.now() - lastReconcileAt > 30_000) {
+    runAutoReconciliation().catch(() => {});
+  }
   const { status, q, name, phone, item } = req.query;
   let list = Array.isArray(db.orders) ? db.orders : [];
   if (status && status !== 'all') list = list.filter((o) => o.status === status);
@@ -1149,17 +1144,19 @@ const COD_MIN_ORDER = 500;
 /* Tells the checkout whether to open Razorpay or fall back to the demo flow,
    and the COD rules to show -- sent from here so the page cannot drift from
    what is enforced. */
-app.get('/api/payments/config', (_req, res) =>
+app.get('/api/payments/config', (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
   res.json({
     razorpay: razorpayReady(),
     keyId: razorpayReady() ? rzpPublicKey() : null,
     codAdvance: COD_ADVANCE,
     codMinOrder: COD_MIN_ORDER,
-  }));
+  });
+});
 
 /* Step 1: price the cart here, open a Razorpay order for exactly that amount,
    and park the priced snapshot. No site order exists until payment verifies. */
-app.post('/api/payments/razorpay/order', async (req, res) => {
+app.post('/api/payments/razorpay/order', optionalCustomer, async (req, res) => {
   if (!razorpayReady()) return res.status(503).json({ error: 'Online payment is not configured.' });
 
   const { items = [], customer = {}, couponCode = '', payment = 'Prepaid' } = req.body || {};
@@ -1183,7 +1180,13 @@ app.post('/api/payments/razorpay/order', async (req, res) => {
     const rzpOrder = await createRzpOrder({
       amount: charge,
       receipt: short,
-      notes: { customer: customer.name || '', phone: customer.phone || '', mode: cod ? 'COD advance' : 'Prepaid' },
+      notes: {
+        customer: customer.name || '',
+        phone: customer.phone || '',
+        email: customer.email || '',
+        city: customer.city || '',
+        mode: cod ? 'COD advance' : 'Prepaid',
+      },
     });
 
     db.payments = [{
@@ -1194,9 +1197,12 @@ app.post('/api/payments/razorpay/order', async (req, res) => {
       amount: charge,
       totals,
       customer,
+      customerId: req.customer?.id || null,
       createdAt: new Date().toISOString(),
     }, ...db.payments];
-    save();
+    /* Persist immediately so a container restart before checkout completes
+       cannot drop the payment session before /verify or webhook arrives. */
+    await saveNow();
 
     res.json({
       keyId: rzpPublicKey(),
@@ -1212,6 +1218,8 @@ app.post('/api/payments/razorpay/order', async (req, res) => {
   }
 });
 
+const fulfillingPayments = new Set();
+
 /** Turns a verified payment intent into a real order. Safe to call twice. */
 function fulfilPayment(intent, paymentId) {
   const existing = (db.orders || []).find((o) =>
@@ -1222,40 +1230,108 @@ function fulfilPayment(intent, paymentId) {
     if (intent.status !== 'paid') {
       intent.status = 'paid';
       intent.orderId = existing.id;
-      save();
+      save('payments');
     }
     return existing;
   }
 
-  /* `amount` is what Razorpay charged: the whole total for a prepaid order,
-     the advance for COD. Intents from before COD advances have no `mode` and
-     were all prepaid. */
-  const cod = intent.mode === 'COD';
-  const order = buildOrder(intent.totals, intent.customer, cod ? 'COD' : 'Prepaid', {
-    razorpayOrderId: intent.razorpayOrderId,
-    razorpayPaymentId: paymentId,
-    paidAt: new Date().toISOString(),
-    amountPaid: intent.amount,
-    balanceDue: Math.max(0, intent.totals.total - intent.amount),
-  });
-  db.orders = [order, ...db.orders];
-  commitStock(intent.totals.priced);
-  /* Prepaid orders were not counting the redemption — only the COD path did —
-     so a coupon's usage limit could be exceeded by paying online. */
-  redeemCoupon(intent.totals.coupon?.id);
+  const lockKey = intent.razorpayOrderId || paymentId;
+  if (lockKey && fulfillingPayments.has(lockKey)) {
+    return (db.orders || []).find((o) =>
+      (paymentId && o.razorpayPaymentId === paymentId) ||
+      (intent.razorpayOrderId && o.razorpayOrderId === intent.razorpayOrderId)
+    );
+  }
+  if (lockKey) fulfillingPayments.add(lockKey);
 
-  intent.status = 'paid';
-  intent.orderId = order.id;
-  save();
+  try {
+    /* `amount` is what Razorpay charged: the whole total for a prepaid order,
+       the advance for COD. Intents from before COD advances have no `mode` and
+       were all prepaid. */
+    const cod = intent.mode === 'COD';
+    const order = buildOrder(intent.totals, intent.customer, cod ? 'COD' : 'Prepaid', {
+      razorpayOrderId: intent.razorpayOrderId,
+      razorpayPaymentId: paymentId,
+      paidAt: new Date().toISOString(),
+      amountPaid: intent.amount,
+      balanceDue: Math.max(0, intent.totals.total - intent.amount),
+      ...(intent.customerId ? { customerId: intent.customerId } : {}),
+    });
+    db.orders = [order, ...db.orders];
+    commitStock(intent.totals.priced);
+    /* Prepaid orders were not counting the redemption — only the COD path did —
+       so a coupon's usage limit could be exceeded by paying online. */
+    redeemCoupon(intent.totals.coupon?.id);
 
-  /* Send order confirmation email — fire-and-forget, never blocks the response */
-  sendOrderConfirmationEmail(order).catch(() => {});
+    intent.status = 'paid';
+    intent.orderId = order.id;
+    save();
 
-  return order;
+    /* Send order confirmation email — fire-and-forget, never blocks the response */
+    sendOrderConfirmationEmail(order).catch(() => {});
+
+    return order;
+  } finally {
+    if (lockKey) fulfillingPayments.delete(lockKey);
+  }
+}
+
+/** Ensures an authorized payment is captured before order creation. */
+async function ensureCaptured(pay) {
+  if (!pay) return pay;
+  if (pay.status === 'captured') return pay;
+  if (pay.status === 'authorized') {
+    try {
+      const captured = await capturePayment(pay.id, pay.amount, pay.currency || 'INR');
+      console.log(`  [Razorpay] Auto-captured authorized payment ${pay.id} (₹${Math.round((pay.amount || 0) / 100)})`);
+      return captured || { ...pay, status: 'captured' };
+    } catch (err) {
+      if (/already been captured/i.test(err?.error?.description || err?.message || '')) {
+        return { ...pay, status: 'captured' };
+      }
+      console.warn(`  ! [Razorpay] Capture failed for ${pay.id}:`, err?.error?.description || err.message);
+    }
+  }
+  return pay;
+}
+
+/** Rebuilds an order from raw Razorpay payment data when no local intent exists. */
+function fulfilFromRazorpayEntity(pay) {
+  const paymentId = pay.id;
+  const orderId = pay.order_id;
+  const amountRupees = Math.round((pay.amount || 0) / 100);
+  const customer = {
+    name: pay.notes?.customer || pay.notes?.name || 'Customer',
+    email: pay.email || pay.notes?.email || '',
+    phone: pay.contact || pay.notes?.phone || '',
+    address: pay.notes?.address || '',
+    city: pay.notes?.city || '',
+  };
+  const fallbackIntent = {
+    id: `pay_audit_${paymentId}`,
+    razorpayOrderId: orderId || `order_${paymentId}`,
+    mode: pay.notes?.mode === 'COD advance' ? 'COD' : 'Prepaid',
+    amount: amountRupees,
+    totals: {
+      subtotal: amountRupees,
+      shipping: 0,
+      discount: 0,
+      total: amountRupees,
+      priced: [{
+        productId: 'prd_recovered',
+        name: pay.description || 'Sukoon Order',
+        qty: 1,
+        price: amountRupees,
+      }],
+    },
+    customer,
+    createdAt: new Date((pay.created_at || Math.floor(Date.now() / 1000)) * 1000).toISOString(),
+  };
+  return fulfilPayment(fallbackIntent, paymentId);
 }
 
 /* Step 2: the browser reports success. Trust the signature, not the browser. */
-app.post('/api/payments/razorpay/verify', (req, res) => {
+app.post('/api/payments/razorpay/verify', async (req, res) => {
   if (!razorpayReady()) return res.status(503).json({ error: 'Online payment is not configured.' });
 
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body || {};
@@ -1264,15 +1340,36 @@ app.post('/api/payments/razorpay/verify', (req, res) => {
     return res.status(400).json({ error: 'Payment could not be verified.' });
   }
 
-  const intent = db.payments.find((p) => p.razorpayOrderId === razorpay_order_id);
-  if (!intent) return res.status(404).json({ error: 'That payment session has expired.' });
+  let intent = (db.payments || []).find((p) => p.razorpayOrderId === razorpay_order_id);
+  if (!intent) {
+    try {
+      const fresh = await reloadCollection('payments');
+      if (Array.isArray(fresh)) db.payments = fresh;
+      intent = (db.payments || []).find((p) => p.razorpayOrderId === razorpay_order_id);
+    } catch {}
+  }
 
-  res.status(201).json(fulfilPayment(intent, razorpay_payment_id));
+  let order;
+  if (intent) {
+    order = fulfilPayment(intent, razorpay_payment_id);
+  } else {
+    /* Cryptographic signature verified — never return 404 after taking payment. */
+    try {
+      const pay = await ensureCaptured(await fetchPayment(razorpay_payment_id));
+      order = fulfilFromRazorpayEntity(pay);
+    } catch (e) {
+      console.error('  ! verify fallback fetch failed:', e.message);
+      return res.status(404).json({ error: 'That payment session has expired.' });
+    }
+  }
+
+  await saveNow();
+  res.status(201).json(order);
 });
 
 /* Backstop: if the customer closes the tab after paying, the webhook still
    creates the order. Signed over the raw body with the webhook secret. */
-app.post('/api/payments/razorpay/webhook', (req, res) => {
+app.post('/api/payments/razorpay/webhook', async (req, res) => {
   const signature = req.headers['x-razorpay-signature'];
   if (!verifyWebhookSignature(req.rawBody, signature)) {
     return res.status(400).json({ error: 'Invalid signature' });
@@ -1280,9 +1377,24 @@ app.post('/api/payments/razorpay/webhook', (req, res) => {
 
   const event = req.body?.event;
   const entity = req.body?.payload?.payment?.entity;
-  if (event === 'payment.captured' && entity) {
-    const intent = db.payments.find((p) => p.razorpayOrderId === entity.order_id);
-    if (intent) fulfilPayment(intent, entity.id);
+  if ((event === 'payment.captured' || event === 'order.paid') && entity) {
+    let intent = (db.payments || []).find((p) => p.razorpayOrderId === entity.order_id);
+    if (!intent) {
+      try {
+        const fresh = await reloadCollection('payments');
+        if (Array.isArray(fresh)) db.payments = fresh;
+        intent = (db.payments || []).find((p) => p.razorpayOrderId === entity.order_id);
+      } catch {}
+    }
+    if (intent) {
+      fulfilPayment(intent, entity.id);
+    } else {
+      const exists = (db.orders || []).find((o) =>
+        o.razorpayPaymentId === entity.id || (entity.order_id && o.razorpayOrderId === entity.order_id)
+      );
+      if (!exists) fulfilFromRazorpayEntity(entity);
+    }
+    await saveNow();
   }
   /* Always 200 on a valid signature, or Razorpay keeps retrying. */
   res.json({ ok: true });
@@ -1294,7 +1406,16 @@ app.post('/api/payments/razorpay/webhook', (req, res) => {
  * Recovers orders when a customer's mobile browser dropped or closed before /verify.
  */
 async function reconcilePendingPayments() {
-  if (!razorpayReady()) return { scanned: 0, recovered: 0 };
+  if (!razorpayReady()) return { scanned: 0, recovered: 0, recoveredOrders: [] };
+
+  try {
+    const [freshOrders, freshPayments] = await Promise.all([
+      reloadCollection('orders'),
+      reloadCollection('payments'),
+    ]);
+    if (Array.isArray(freshOrders)) db.orders = freshOrders;
+    if (Array.isArray(freshPayments)) db.payments = freshPayments;
+  } catch {}
 
   const now = Date.now();
   const pending = (db.payments || []).filter((p) => {
@@ -1303,26 +1424,31 @@ async function reconcilePendingPayments() {
     return ageMs >= 60_000 && ageMs <= 14 * 24 * 60 * 60_000;
   });
 
-  if (!pending.length) return { scanned: 0, recovered: 0 };
+  if (!pending.length) return { scanned: 0, recovered: 0, recoveredOrders: [] };
 
   let recovered = 0;
+  let dirtyPayments = false;
+  const recoveredOrders = [];
   for (const intent of pending) {
     try {
       const existing = (db.orders || []).find((o) => o.razorpayOrderId === intent.razorpayOrderId);
       if (existing) {
         intent.status = 'paid';
         intent.orderId = existing.id;
+        dirtyPayments = true;
         continue;
       }
 
       const paymentList = await fetchOrderPayments(intent.razorpayOrderId);
       const items = paymentList?.items || [];
-      const successful = items.find((pay) => pay.status === 'captured' || pay.status === 'authorized');
+      let successful = items.find((pay) => pay.status === 'captured' || pay.status === 'authorized');
 
       if (successful) {
+        successful = await ensureCaptured(successful);
         console.log(`  [Reconcile] Recovered paid order ${intent.razorpayOrderId} (Payment ID: ${successful.id})`);
         const order = fulfilPayment(intent, successful.id);
         recovered++;
+        recoveredOrders.push(order.number);
         console.log(`  [Reconcile] Created order #${order.number} for ${order.customer?.name} (${order.customer?.email})`);
       }
     } catch (err) {
@@ -1330,17 +1456,19 @@ async function reconcilePendingPayments() {
     }
   }
 
-  if (recovered > 0) {
-    save();
+  if (recovered > 0 || dirtyPayments) {
+    await saveNow();
   }
 
-  return { scanned: pending.length, recovered };
+  return { scanned: pending.length, recovered, recoveredOrders };
 }
 
 let reconciling = false;
+let lastReconcileAt = 0;
 async function runAutoReconciliation() {
   if (reconciling) return;
   reconciling = true;
+  lastReconcileAt = Date.now();
   try {
     await reconcilePendingPayments();
   } catch (e) {
@@ -1371,100 +1499,75 @@ function msUntilNext10pmIST() {
 }
 
 /**
- * Nightly 10:00 PM IST 24h Audit:
- * Queries Razorpay for all captured payments in the last 24 hours,
- * verifies each against db.orders, and automatically creates any missing orders.
+ * Audits all Razorpay payments in the past `hours` hours (default 24h),
+ * captures any lingering authorized payments, verifies each against db.orders,
+ * and automatically creates any missing orders.
  */
-async function runNightly24hAudit() {
-  if (!razorpayReady()) return { scanned: 0, recovered: 0 };
+async function runRazorpayAudit({ hours = 24 } = {}) {
+  if (!razorpayReady()) return { scanned: 0, recovered: 0, recoveredOrders: [] };
 
-  console.log('  [Nightly Audit 10:00 PM IST] Starting 24-hour Razorpay reconciliation audit...');
+  console.log(`  [Razorpay Audit] Starting ${hours}h Razorpay reconciliation audit...`);
 
   try {
-    const fresh = await reloadCollection('orders');
-    if (Array.isArray(fresh)) db.orders = fresh;
+    const [freshOrders, freshPayments] = await Promise.all([
+      reloadCollection('orders'),
+      reloadCollection('payments'),
+    ]);
+    if (Array.isArray(freshOrders)) db.orders = freshOrders;
+    if (Array.isArray(freshPayments)) db.payments = freshPayments;
   } catch {}
 
   const nowSec = Math.floor(Date.now() / 1000);
-  const fromSec = nowSec - (24 * 60 * 60); // 24 hours ago
+  const fromSec = nowSec - (Math.max(1, Number(hours) || 24) * 60 * 60);
 
-  let paymentList;
+  let items;
   try {
-    paymentList = await listPayments({ from: fromSec, to: nowSec, count: 100 });
+    items = await fetchAllPayments({ from: fromSec, to: nowSec });
   } catch (err) {
-    console.error('  ! [Nightly Audit] Failed to fetch payments from Razorpay:', err.message);
-    return { error: err.message };
+    console.error('  ! [Razorpay Audit] Failed to fetch payments from Razorpay:', err.message);
+    return { error: err.message, scanned: 0, recovered: 0, recoveredOrders: [] };
   }
 
-  const items = paymentList?.items || [];
-  const captured = items.filter((p) => p.status === 'captured');
-  console.log(`  [Nightly Audit] Auditing ${captured.length} captured Razorpay payments from the last 24h.`);
+  const paidItems = items.filter((p) => p.status === 'captured' || p.status === 'authorized');
+  console.log(`  [Razorpay Audit] Auditing ${paidItems.length} paid Razorpay transactions from the last ${hours}h.`);
 
   let recovered = 0;
-  for (const pay of captured) {
+  const recoveredOrders = [];
+  for (let pay of paidItems) {
     const orderId = pay.order_id;
     const paymentId = pay.id;
 
-    // Check if order exists in db.orders
+    // Check if order already exists in db.orders
     const exists = (db.orders || []).find((o) =>
       o.razorpayPaymentId === paymentId || (orderId && o.razorpayOrderId === orderId)
     );
+    if (exists) continue;
 
-    if (exists) continue; // Already mapped and confirmed
-
-    // Found an unmapped captured payment
-    console.warn(`  [Nightly Audit] ⚠️ Missing order found for payment ${paymentId} (${orderId}) — ₹${pay.amount / 100}`);
-
-    let intent = (db.payments || []).find((p) => p.razorpayOrderId === orderId);
-
-    if (intent) {
-      const order = fulfilPayment(intent, paymentId);
-      recovered++;
-      console.log(`  [Nightly Audit] ✅ Recovered order #${order.number} for ${order.customer?.name} (${order.customer?.email})`);
-    } else {
-      // Reconstruct order from Razorpay payment details & notes
-      const customer = {
-        name: pay.notes?.customer || pay.notes?.name || 'Customer',
-        email: pay.email || '',
-        phone: pay.contact || pay.notes?.phone || '',
-        address: pay.notes?.address || '',
-        city: pay.notes?.city || '',
-      };
-      const amountRupees = Math.round(pay.amount / 100);
-      const fallbackIntent = {
-        id: `pay_audit_${paymentId}`,
-        razorpayOrderId: orderId || `order_${paymentId}`,
-        mode: 'Prepaid',
-        amount: amountRupees,
-        totals: {
-          subtotal: amountRupees,
-          shipping: 0,
-          discount: 0,
-          total: amountRupees,
-          priced: [
-            {
-              productId: 'prd_recovered',
-              name: pay.description || 'Sukoon Order',
-              qty: 1,
-              price: amountRupees,
-            }
-          ]
-        },
-        customer,
-        createdAt: new Date(pay.created_at * 1000).toISOString(),
-      };
-      const order = fulfilPayment(fallbackIntent, paymentId);
-      recovered++;
-      console.log(`  [Nightly Audit] ✅ Created order #${order.number} for ${customer.name}`);
+    // If still authorized (older than 45s), capture it so funds don't expire uncaptured
+    if (pay.status === 'authorized') {
+      const ageSec = nowSec - (pay.created_at || nowSec);
+      if (ageSec < 45) continue;
+      pay = await ensureCaptured(pay);
     }
+
+    console.warn(`  [Razorpay Audit] ⚠️ Missing order found for payment ${paymentId} (${orderId}) — ₹${pay.amount / 100}`);
+
+    const intent = orderId && (db.payments || []).find((p) => p.razorpayOrderId === orderId);
+    const order = intent
+      ? fulfilPayment(intent, paymentId)
+      : fulfilFromRazorpayEntity(pay);
+
+    recovered++;
+    if (order?.number) recoveredOrders.push(order.number);
+    console.log(`  [Razorpay Audit] ✅ Recovered order #${order?.number} for ${order?.customer?.name}`);
   }
 
   if (recovered > 0) {
     await saveNow();
   }
 
-  console.log(`  [Nightly Audit 10:00 PM IST] Audit complete. Scanned: ${captured.length}, Recovered: ${recovered}.`);
-  return { scanned: captured.length, recovered };
+  console.log(`  [Razorpay Audit] Complete. Scanned: ${paidItems.length}, Recovered: ${recovered}.`);
+  return { scanned: paidItems.length, recovered, recoveredOrders };
 }
 
 /**
@@ -1477,7 +1580,7 @@ function scheduleNightly10pmAudit() {
 
   setTimeout(async () => {
     try {
-      await runNightly24hAudit();
+      await runRazorpayAudit({ hours: 24 });
     } catch (err) {
       console.error('  ! [Nightly Audit] Execution error:', err.message);
     }
@@ -1486,19 +1589,32 @@ function scheduleNightly10pmAudit() {
 }
 
 /* Admin trigger endpoints */
-app.post('/api/payments/reconcile', auth, async (_req, res) => {
+app.post('/api/payments/reconcile', auth, async (req, res) => {
   try {
-    const result = await reconcilePendingPayments();
-    res.json({ ok: true, ...result });
+    const hours = Math.min(24 * 30, Math.max(1, Number(req.body?.hours) || 168));
+    const pendingRes = await reconcilePendingPayments();
+    const auditRes = await runRazorpayAudit({ hours });
+    const recoveredOrders = [...new Set([...(pendingRes.recoveredOrders || []), ...(auditRes.recoveredOrders || [])])];
+    res.json({
+      ok: true,
+      hours,
+      scanned: Math.max(pendingRes.scanned || 0, auditRes.scanned || 0),
+      pendingScanned: pendingRes.scanned || 0,
+      auditScanned: auditRes.scanned || 0,
+      recovered: (pendingRes.recovered || 0) + (auditRes.recovered || 0),
+      recoveredOrders,
+      ...(auditRes.error ? { warning: auditRes.error } : {}),
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-app.post('/api/payments/audit-24h', auth, async (_req, res) => {
+app.post('/api/payments/audit-24h', auth, async (req, res) => {
   try {
-    const result = await runNightly24hAudit();
-    res.json({ ok: true, ...result });
+    const hours = Math.min(24 * 30, Math.max(1, Number(req.body?.hours) || 24));
+    const result = await runRazorpayAudit({ hours });
+    res.json({ ok: true, hours, ...result });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -1631,12 +1747,15 @@ app.get('/api/customers', auth, (req, res) => {
   res.json(list);
 });
 
-app.get('/api/pages', (_req, res) =>
-  res.json((db.pages || []).filter((p) => p.published).map(({ bodyHtml, ...rest }) => rest)));
+app.get('/api/pages', (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
+  res.json((db.pages || []).filter((p) => p.published).map(({ bodyHtml, ...rest }) => rest));
+});
 
 app.get('/api/pages/:handle', (req, res) => {
   const page = (db.pages || []).find((p) => p.handle === req.params.handle && p.published);
   if (!page) return res.status(404).json({ error: 'Not found' });
+  res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
   res.json(page);
 });
 
@@ -2352,14 +2471,14 @@ function scheduleVisitPersist() {
     unpersistedVisits = 0;
     if (visitSaveTimer) clearTimeout(visitSaveTimer);
     visitSaveTimer = null;
-    save();
+    save('visits');
     return;
   }
   if (!visitSaveTimer) {
     visitSaveTimer = setTimeout(() => {
       unpersistedVisits = 0;
       visitSaveTimer = null;
-      save();
+      save('visits');
     }, 120_000);
   }
 }
@@ -2553,18 +2672,22 @@ app.get('/sitemap.xml', (_req, res) => {
    variables missing on the host, uploads quietly fall back to Cloudinary, and
    the only clue is an error message in Cloudinary's wording. Names a backend,
    never a credential. */
-app.get('/api/health', (_req, res) => res.json({
-  ok: true,
-  products: db.products.length,
-  /* `images` matters for the same reason `video` does: without Cloudinary
-     credentials, product photographs are written to the container's own disk,
-     which every redeploy wipes -- so they upload, appear to work, and are gone
-     by the next morning. Names a backend, never a credential. */
-  images: cloud.configured ? 'cloudinary' : 'local-disk',
-  video: r2.configured ? 'r2' : cloud.configured ? 'cloudinary' : 'local-disk',
-  maxVideoMb: Math.round(VIDEO_MAX_BYTES / (1024 * 1024)),
-  maxImageMb: 15,
-}));
+app.get('/api/health', (_req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({
+    ok: true,
+    ts: Date.now(),
+    uptime: Math.round(process.uptime()),
+    products: db.products.length,
+    razorpay: razorpayReady(),
+    razorpayMode: rzpPublicKey().startsWith('rzp_live_') ? 'live' : rzpPublicKey() ? 'test' : 'none',
+    webhookConfigured: rzpWebhookReady(),
+    images: cloud.configured ? 'cloudinary' : 'local-disk',
+    video: r2.configured ? 'r2' : cloud.configured ? 'cloudinary' : 'local-disk',
+    maxVideoMb: Math.round(VIDEO_MAX_BYTES / (1024 * 1024)),
+    maxImageMb: 15,
+  });
+});
 
 /* Serve the built SPA when it exists (single-command demo deploy). */
 const DIST = path.join(__dirname, '..', 'client', 'dist');
@@ -2639,7 +2762,12 @@ console.log(
     ? `  Cloudinary  ->  ${cloud.cloud}  (uploads go to the CDN)`
     : '  Cloudinary  ->  not configured, uploads stay on local disk'
 );
-console.log(`  SEO         ->  canonical host ${siteUrl()}${process.env.SITE_URL ? '' : '  (default; set SITE_URL)'}`);
+console.log(
+  razorpayReady()
+    ? `  Razorpay    ->  ${rzpPublicKey().startsWith('rzp_live_') ? 'LIVE' : 'TEST'} (${rzpPublicKey()}) · webhook ${rzpWebhookReady() ? 'signed' : 'secret missing'}`
+    : '  Razorpay    ->  not configured'
+);
+console.log(`  SEO         ->  canonical host ${siteUrl()}${process.env.SITE_URL || process.env.Site_URL ? '' : '  (default; set SITE_URL)'}`);
 console.log(
   r2.configured
     ? `  R2          ->  ${r2.bucket}  (review videos, zero egress cost)`
@@ -2724,20 +2852,36 @@ app.listen(PORT, () => {
 function startSelfPing() {
   if (process.env.NODE_ENV === 'development') return;
 
-  const origin = (process.env.SITE_URL || 'https://sukoon-crystal.onrender.com').replace(/\/$/, '');
-  const url    = `${origin}/api/health`;
-  const INTERVAL_MS = 10 * 60 * 1000; /* 10 minutes — well inside Render's 15-min sleep window */
+  const rawOrigin = process.env.SITE_URL || process.env.Site_URL || 'https://sukoon-crystal.onrender.com';
+  const primaryOrigin = rawOrigin.replace(/\/+$/, '');
+  const primaryUrl = `${primaryOrigin}/api/health`;
+  const fallbackUrl = 'https://sukoon-crystal.onrender.com/api/health';
+  /* 4 minutes: frequent enough that even two transient errors cannot let Render's
+     15-minute inactivity sleep timer expire. */
+  const INTERVAL_MS = 4 * 60 * 1000;
 
-  const ping = () => {
-    fetch(url, { signal: AbortSignal.timeout(15000) })
-      .then((r) => {
-        if (!r.ok) console.warn(`  [keep-alive] /api/health returned ${r.status}`);
-      })
-      .catch((e) => console.warn(`  [keep-alive] ping failed: ${e.message}`));
+  const pingUrl = async (target) => {
+    const r = await fetch(target, { signal: AbortSignal.timeout(12000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
   };
 
-  /* Stagger the first ping by 5 minutes so it doesn't fire at startup while
-     the server is still initialising the database connection. */
-  setTimeout(() => { ping(); setInterval(ping, INTERVAL_MS); }, 5 * 60 * 1000);
-  console.log(`  Keep-alive  ->  pinging ${url} every 10 min`);
+  const ping = async () => {
+    try {
+      await pingUrl(primaryUrl);
+    } catch (e) {
+      if (primaryUrl !== fallbackUrl) {
+        try {
+          await pingUrl(fallbackUrl);
+          return;
+        } catch (e2) {
+          console.warn(`  [keep-alive] primary (${e.message}) and fallback (${e2.message}) pings failed`);
+          return;
+        }
+      }
+      console.warn(`  [keep-alive] ping failed: ${e.message}`);
+    }
+  };
+
+  setTimeout(() => { ping(); setInterval(ping, INTERVAL_MS); }, 60 * 1000);
+  console.log(`  Keep-alive  ->  pinging ${primaryUrl} every 4 min`);
 }

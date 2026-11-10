@@ -25,6 +25,9 @@ const META = {
 
 const COURIERS = ['Delhivery', 'BlueDart', 'DTDC', 'India Post', 'Ekart'];
 
+const digitsOf = (s) => String(s || '').split('').filter((c) => c >= '0' && c <= '9').join('');
+const hasText = (hay, needle) => String(hay || '').toLowerCase().includes(String(needle).toLowerCase());
+
 const StatusBadge = ({ status }) => {
   const m = META[status];
   if (!m) return null;
@@ -48,20 +51,33 @@ export default function AdminOrders() {
   const [busy, setBusy] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
-  const { data: rawOrders, loading, reload } = useAsync(
-    () => api.orders({ status, q, name, phone, item }),
-    [status, q, name, phone, item]
-  );
-  const orders = useMemo(() => {
-    if (!Array.isArray(rawOrders)) return [];
-    return [...rawOrders].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-  }, [rawOrders]);
+  const all = useAsync(() => api.orders({ status: 'all' }), []);
+  const loading = all.loading;
+  const reload = all.reload;
 
-  const all = useAsync(() => api.orders({}), []);
   const allOrders = useMemo(() => {
     if (!Array.isArray(all.data)) return [];
     return [...all.data].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
   }, [all.data]);
+
+  const orders = useMemo(() => {
+    let list = allOrders;
+    if (status && status !== 'all') list = list.filter((o) => o.status === status);
+    if (name) list = list.filter((o) => hasText(o.customer?.name, name));
+    if (phone) {
+      const d = digitsOf(phone);
+      if (d) list = list.filter((o) => digitsOf(o.customer?.phone).includes(d));
+    }
+    if (item) {
+      list = list.filter((o) => (o.items || []).some((it) => hasText(it.name, item) || hasText(it.slug, item)));
+    }
+    if (q) {
+      const t = q.toLowerCase();
+      list = list.filter((o) =>
+        [o.number, o.customer?.name, o.customer?.phone, o.customer?.city, o.awb].filter(Boolean).join(' ').toLowerCase().includes(t));
+    }
+    return list;
+  }, [allOrders, status, q, name, phone, item]);
 
   const counts = useMemo(() => {
     return {
@@ -98,7 +114,6 @@ export default function AdminOrders() {
       setOpen(updated);
       toast(`${order.number} marked ${META[to].label.toLowerCase()}.`, 'success');
       reload();
-      all.reload();
     } catch (e) {
       toast(e.message, 'error');
     } finally {
@@ -109,14 +124,14 @@ export default function AdminOrders() {
   const handleSync = async () => {
     setSyncing(true);
     try {
-      const res = await api.syncPayments();
+      const res = await api.syncPayments(168);
       if (res.recovered > 0) {
-        toast(`Successfully recovered ${res.recovered} paid order${res.recovered > 1 ? 's' : ''}!`, 'success');
+        const nums = res.recoveredOrders?.length ? ` (${res.recoveredOrders.join(', ')})` : '';
+        toast(`Recovered ${res.recovered} paid order${res.recovered > 1 ? 's' : ''}${nums}!`, 'success');
       } else {
-        toast(`All payments are in sync (scanned ${res.scanned || 0} pending sessions).`, 'success');
+        toast(`All synced — checked ${res.auditScanned ?? 0} Razorpay payments (last 7 days) & ${res.pendingScanned ?? 0} pending sessions.`, 'success');
       }
       reload();
-      all.reload();
     } catch (e) {
       toast(`Sync failed: ${e.message}`, 'error');
     } finally {
@@ -128,7 +143,6 @@ export default function AdminOrders() {
     const updated = await api.updateOrder(open.id, patch);
     setOpen(updated);
     reload();
-    all.reload();
   };
 
   const nextStatus = open ? FLOW[FLOW.indexOf(open.status) + 1] : null;
@@ -208,7 +222,7 @@ export default function AdminOrders() {
 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <p className="text-[0.8rem] text-muted">
-          {loading ? 'Loading orders…' : `${orders.length} shown`}
+          {loading ? 'Loading ordersâ€¦' : `${orders.length} shown`}
           {(q || name || phone || item) && (
             <button
               onClick={() => { setQ(''); setName(''); setPhone(''); setItem(''); }}
@@ -256,12 +270,12 @@ export default function AdminOrders() {
                       <p className="text-[0.86rem]">{o.customer?.name || 'Guest'}</p>
                       {/* The phone is what the shop rings when a delivery goes
                           wrong. It belongs in the row, not two clicks away. */}
-                      <p className="text-[0.72rem] text-muted tnum">{o.customer?.phone || '—'}</p>
+                      <p className="text-[0.72rem] text-muted tnum">{o.customer?.phone || 'â€”'}</p>
                       <p className="text-[0.72rem] text-muted">{[o.customer?.city, o.customer?.state].filter(Boolean).join(', ')}</p>
                     </td>
                     <td className="px-5 py-3">
                       <p className="line-clamp-1 max-w-[240px] text-[0.82rem]">
-                        {o.items?.[0]?.name || '—'}
+                        {o.items?.[0]?.name || 'â€”'}
                       </p>
                       {o.items?.length > 1 && (
                         <p className="text-[0.72rem] text-muted">+{o.items.length - 1} more</p>
@@ -316,7 +330,6 @@ export default function AdminOrders() {
                   await api.deleteOrder(open.id);
                   setOpen(null);
                   reload();
-                  all.reload();
                   toast('Order deleted.', 'success');
                 }}
               />
@@ -378,11 +391,11 @@ export default function AdminOrders() {
               <p className="field-label">Customer</p>
               <p className="text-[1.02rem] font-medium">{open.customer?.name || 'Guest'}</p>
               <ul className="mt-3 space-y-2 text-[0.83rem] text-muted">
-                <li className="flex items-center gap-2.5"><Phone size={13} strokeWidth={1.7} className="text-accent" /> {open.customer?.phone || '—'}</li>
-                <li className="flex items-center gap-2.5"><Mail size={13} strokeWidth={1.7} className="text-accent" /> {open.customer?.email || '—'}</li>
+                <li className="flex items-center gap-2.5"><Phone size={13} strokeWidth={1.7} className="text-accent" /> {open.customer?.phone || 'â€”'}</li>
+                <li className="flex items-center gap-2.5"><Mail size={13} strokeWidth={1.7} className="text-accent" /> {open.customer?.email || 'â€”'}</li>
                 <li className="flex gap-2.5">
                   <MapPin size={13} strokeWidth={1.7} className="mt-0.5 shrink-0 text-accent" />
-                  <span>{[open.customer?.address, open.customer?.city, open.customer?.state].filter(Boolean).join(', ')}{open.customer?.pincode ? ` — ${open.customer.pincode}` : ''}</span>
+                  <span>{[open.customer?.address, open.customer?.city, open.customer?.state].filter(Boolean).join(', ')}{open.customer?.pincode ? ` â€” ${open.customer.pincode}` : ''}</span>
                 </li>
               </ul>
             </div>
@@ -396,7 +409,7 @@ export default function AdminOrders() {
                     <ProductImage product={{ name: it.name, image: it.image }} className="h-12 w-12 shrink-0" imgClassName="rounded-[var(--r-btn)]" />
                     <div className="min-w-0 flex-1">
                       <p className="line-clamp-1 text-[0.86rem]">{it.name}</p>
-                      <p className="text-[0.74rem] text-muted">{inr(it.price)} × {it.qty}</p>
+                      <p className="text-[0.74rem] text-muted">{inr(it.price)} Ã— {it.qty}</p>
                     </div>
                     <span className="text-[0.86rem] font-medium tnum">{inr(it.price * it.qty)}</span>
                   </li>
@@ -405,7 +418,7 @@ export default function AdminOrders() {
               <dl className="mt-4 space-y-2 text-[0.86rem]">
                 <div className="flex justify-between"><dt className="text-muted">Subtotal</dt><dd className="tnum">{inr(open.subtotal)}</dd></div>
                 {open.discount > 0 && (
-                  <div className="flex justify-between text-ok"><dt>Discount</dt><dd className="tnum">− {inr(open.discount)}</dd></div>
+                  <div className="flex justify-between text-ok"><dt>Discount</dt><dd className="tnum">âˆ’ {inr(open.discount)}</dd></div>
                 )}
                 <div className="flex justify-between"><dt className="text-muted">Shipping</dt><dd className="tnum">{open.shipping ? inr(open.shipping) : 'Free'}</dd></div>
                 <div className="flex justify-between border-t border-line pt-2.5 text-[1rem] font-semibold">
@@ -436,7 +449,7 @@ export default function AdminOrders() {
                   defaultValue={open.notes}
                   onBlur={(e) => saveMeta({ notes: e.target.value })}
                   className="field resize-none"
-                  placeholder="Gift wrap, called customer, courier delay…"
+                  placeholder="Gift wrap, called customer, courier delayâ€¦"
                 />
               </Field>
             </div>

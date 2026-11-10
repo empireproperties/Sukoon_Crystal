@@ -82,6 +82,12 @@ let pgDriver = null;          /* the postgres.js module, set only in Cockroach m
 let writeTimer = null;
 let flushing = null;
 
+/* Tracks which collections may have changed since the last flush. When save()
+   is called with a specific collection name (e.g. save('visits')), only that
+   table is diffed instead of re-stringifying every collection on the loop. */
+const dirty = new Set();
+const DIRTY_ALL = '__all__';
+
 /* key -> JSON of the last value written, per collection. Lets a flush send only
    the documents that actually changed instead of rewriting everything. */
 const snapshots = new Map();
@@ -137,12 +143,17 @@ async function initCockroach() {
   }
 
   cache = structuredClone(EMPTY);
-  for (const name of COLLECTIONS) {
-    cache[name] = await pgDriver.loadCollection(name);
-    snapshots.set(name, snapshotOf(cache[name]));
+  /* Load all collections and settings in parallel so cold starts aren't bottlenecked
+     by 18 sequential network round-trips to Postgres. */
+  const [loaded, settings] = await Promise.all([
+    Promise.all(COLLECTIONS.map(async (name) => [name, await pgDriver.loadCollection(name)])),
+    pgDriver.loadSettings(SETTINGS_ID),
+  ]);
+  for (const [name, docs] of loaded) {
+    cache[name] = docs;
+    snapshots.set(name, snapshotOf(docs));
   }
 
-  const settings = await pgDriver.loadSettings(SETTINGS_ID);
   cache.settings = settings ? { ...EMPTY.settings, ...settings } : { ...EMPTY.settings };
   snapshots.set('settings', new Map([[SETTINGS_ID, JSON.stringify(cache.settings)]]));
 
@@ -261,16 +272,25 @@ const settingsChanged = () =>
 const markSettingsWritten = () =>
   snapshots.set('settings', new Map([[SETTINGS_ID, JSON.stringify(cache.settings)]]));
 
+function consumeDirtyTargets() {
+  const all = dirty.size === 0 || dirty.has(DIRTY_ALL);
+  const targets = all ? COLLECTIONS : COLLECTIONS.filter((c) => dirty.has(c));
+  const checkSettings = all || dirty.has('settings');
+  dirty.clear();
+  return { targets, checkSettings };
+}
+
 /** Sends only what changed since the last flush. */
 async function flushToPostgres() {
-  for (const name of COLLECTIONS) {
+  const { targets, checkSettings } = consumeDirtyTargets();
+  for (const name of targets) {
     const { next, changed, removed } = diff(name);
     if (!changed.length && !removed.length) continue;
     await pgDriver.applyChanges(name, changed.map(([key, json]) => [key, JSON.parse(json)]), removed);
     snapshots.set(name, next);
   }
 
-  if (settingsChanged()) {
+  if (checkSettings && settingsChanged()) {
     await pgDriver.saveSettings(SETTINGS_ID, cache.settings);
     markSettingsWritten();
   }
@@ -278,7 +298,8 @@ async function flushToPostgres() {
 
 /** Sends only what changed since the last flush. */
 async function flushToMongo() {
-  for (const name of COLLECTIONS) {
+  const { targets, checkSettings } = consumeDirtyTargets();
+  for (const name of targets) {
     const { next, changed, removed } = diff(name);
 
     const ops = changed.map(([key, json]) => ({
@@ -292,13 +313,14 @@ async function flushToMongo() {
     }
   }
 
-  if (settingsChanged()) {
+  if (checkSettings && settingsChanged()) {
     await mongo.collection('settings').replaceOne({ _id: SETTINGS_ID }, cache.settings, { upsert: true });
     markSettingsWritten();
   }
 }
 
 function flushToFile() {
+  dirty.clear();
   ensureDir();
   fs.writeFileSync(DB_FILE, JSON.stringify(cache, null, 2));
 }
@@ -317,7 +339,8 @@ async function flush() {
 }
 
 /** Debounced write so high-frequency events (visits) don't thrash the store. */
-export function save() {
+export function save(collection) {
+  dirty.add(collection || DIRTY_ALL);
   if (writeTimer) return;
   writeTimer = setTimeout(() => {
     writeTimer = null;
@@ -327,13 +350,14 @@ export function save() {
 
 export function saveNow(data) {
   if (data) cache = data;
+  dirty.add(DIRTY_ALL);
   if (writeTimer) { clearTimeout(writeTimer); writeTimer = null; }
   return flush();
 }
 
 export const db = new Proxy({}, {
   get: (_t, key) => load()[key],
-  set: (_t, key, value) => { load()[key] = value; save(); return true; },
+  set: (_t, key, value) => { load()[key] = value; save(String(key)); return true; },
 });
 
 export const uid = (prefix = 'id') =>

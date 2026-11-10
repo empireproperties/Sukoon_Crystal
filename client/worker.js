@@ -1,4 +1,4 @@
-﻿/* Cloudflare entry point for the storefront.
+/* Cloudflare entry point for the storefront.
  *
  * Three jobs, and the order matters:
  *
@@ -23,12 +23,70 @@
 
 const API_PREFIXES = ['/api/', '/uploads/'];
 
+/* Public read-only storefront endpoints safe to edge-cache briefly (60s) when
+   no Authorization header or admin ?all=1 flag is present. Cuts Render wake-up
+   bursts drastically during ad spikes while keeping mutations uncached. */
+const CACHEABLE_API_PREFIXES = [
+  '/api/products',
+  '/api/categories',
+  '/api/settings',
+  '/api/banners',
+  '/api/slides',
+  '/api/events',
+  '/api/services',
+  '/api/pages',
+  '/api/reviews',
+  '/api/payments/config',
+];
+const RETRYABLE_UPSTREAM = new Set([429, 502, 503, 504]);
+
 /* Never rewritten: the admin is behind a login and has nothing to say to a
    crawler, and rewriting it would only add latency to the one part of the site
    whose users are already signed in. */
 const NO_SEO = ['/admin'];
 
 const jsonEscape = (s) => String(s ?? '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+
+const isPublicCacheableGet = (request, url) =>
+  request.method === 'GET'
+  && !request.headers.get('authorization')
+  && url.searchParams.get('all') !== '1'
+  && CACHEABLE_API_PREFIXES.some((p) => url.pathname === p || url.pathname.startsWith(`${p}/`));
+
+/** Proxies GET /api/* with a brief retry on transient 429/5xx and edge caching
+ *  for public catalogue reads so traffic spikes never overload the origin. */
+async function proxyApiGet(request, url, target, ctx) {
+  const canCache = isPublicCacheableGet(request, url);
+  const cache = canCache && typeof caches !== 'undefined' ? caches.default : null;
+  const cacheKey = cache ? new Request(url.toString(), { method: 'GET' }) : null;
+
+  if (cache && cacheKey) {
+    const cached = await cache.match(cacheKey);
+    if (cached) return cached;
+  }
+
+  let res = await fetch(new Request(target, request), { redirect: 'manual' });
+  if (RETRYABLE_UPSTREAM.has(res.status)) {
+    await new Promise((r) => setTimeout(r, 650));
+    res = await fetch(new Request(target, request), { redirect: 'manual' });
+  }
+
+  if (cache && cacheKey && res.status === 200) {
+    const headers = new Headers(res.headers);
+    if (!headers.has('Cache-Control')) {
+      headers.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+    }
+    const cacheable = new Response(res.clone().body, {
+      status: res.status,
+      statusText: res.statusText,
+      headers,
+    });
+    ctx?.waitUntil?.(cache.put(cacheKey, cacheable.clone()));
+    return cacheable;
+  }
+
+  return res;
+}
 
 /**
  * Asks the API what a URL is about.
@@ -42,6 +100,7 @@ const jsonEscape = (s) => String(s ?? '').replace(/</g, '&lt;').replace(/"/g, '&
 async function fetchSeo(origin, path) {
   const target = `${origin}/api/seo/page?path=${encodeURIComponent(path)}`;
   const res = await fetch(target, {
+    signal: AbortSignal.timeout(2500),
     cf: { cacheEverything: true, cacheTtl: 300 },
   });
   if (!res.ok) return null;
@@ -171,7 +230,7 @@ export default {
     }
   },
 
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     const apiMissing = () =>
@@ -182,6 +241,10 @@ export default {
       if (!env.API_ORIGIN) return apiMissing();
 
       const target = new URL(url.pathname + url.search, env.API_ORIGIN);
+
+      if (request.method === 'GET' && url.pathname.startsWith('/api/')) {
+        return proxyApiGet(request, url, target, ctx);
+      }
 
       /* `new Request(target, request)` carries the method, headers and body
          across unchanged. That matters for three routes in particular: the

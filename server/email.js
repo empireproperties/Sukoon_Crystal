@@ -70,7 +70,8 @@ function buildOrderEmailHtml(order) {
   });
 
   const addr = customer.address || customer.addresses?.[0] || {};
-  const addressLine = [addr.line1, addr.city, addr.state, addr.pincode]
+  const street = typeof addr === 'string' ? addr : addr.line1 || addr.line || '';
+  const addressLine = [street, customer.city || addr.city, customer.state || addr.state, customer.pincode || addr.pincode]
     .filter(Boolean).join(', ');
 
   const isCOD = payment === 'COD';
@@ -218,7 +219,7 @@ function buildOrderEmailHtml(order) {
 
             <!-- CTA -->
             <div style="text-align:center;margin:30px 0 10px;">
-              <a href="${SITE_URL}/orders" style="display:inline-block;background:linear-gradient(135deg,#8b1a1a,#c0392b);color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:30px;font-size:14px;font-weight:bold;letter-spacing:0.5px;">
+              <a href="${SITE_URL}/track?number=${encodeURIComponent(number || '')}" style="display:inline-block;background:linear-gradient(135deg,#8b1a1a,#c0392b);color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:30px;font-size:14px;font-weight:bold;letter-spacing:0.5px;">
                 Track My Order →
               </a>
             </div>

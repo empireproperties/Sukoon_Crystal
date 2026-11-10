@@ -37,7 +37,7 @@ export function getPool() {
   pool = new Pool({
     connectionString: connectionString(),
     ssl: { rejectUnauthorized: true },
-    max: 8,
+    max: 12,
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 15_000,
     application_name: 'sukoon-api',

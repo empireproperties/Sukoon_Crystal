@@ -11,6 +11,9 @@ export const getCustomerToken = () => localStorage.getItem(CUSTOMER_TOKEN_KEY);
 export const setCustomerToken = (t) =>
   (t ? localStorage.setItem(CUSTOMER_TOKEN_KEY, t) : localStorage.removeItem(CUSTOMER_TOKEN_KEY));
 
+const TRANSIENT_STATUS = new Set([429, 502, 503, 504]);
+const RETRY_DELAYS = [900, 2200];
+
 /* `auth` is false, 'admin', or 'customer'. Passing true still means admin so
    existing call sites keep working. */
 async function request(path, { method = 'GET', body, auth = false } = {}) {
@@ -22,18 +25,27 @@ async function request(path, { method = 'GET', body, auth = false } = {}) {
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
+  /* Idempotent GET requests automatically retry on brief upstream cold-starts
+     or 429 wake-up spikes; mutations never retry so an order can't double-fire. */
+  const maxAttempts = method === 'GET' ? RETRY_DELAYS.length + 1 : 1;
   let res;
-  try {
-    res = await fetch(`/api${path}`, {
-      method,
-      headers,
-      body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
-    });
-  } catch {
-    /* fetch only rejects when the request never completed — the server is down,
-       restarting, or the connection dropped. The browser's own wording for this
-       is "Failed to fetch", which tells a shop owner nothing. */
-    throw new Error('Could not reach the server. Check your connection and try again.');
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      res = await fetch(`/api${path}`, {
+        method,
+        headers,
+        body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
+      });
+      if (!TRANSIENT_STATUS.has(res.status) || attempt === maxAttempts - 1) break;
+    } catch {
+      if (attempt === maxAttempts - 1) {
+        /* fetch only rejects when the request never completed — the server is down,
+           restarting, or the connection dropped. The browser's own wording for this
+           is "Failed to fetch", which tells a shop owner nothing. */
+        throw new Error('Could not reach the server. Check your connection and try again.');
+      }
+    }
+    await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt]));
   }
 
   if (res.status === 401 && as) {
@@ -95,7 +107,7 @@ export const api = {
   paymentConfig: () => request('/payments/config'),
   createPayment: (body) => request('/payments/razorpay/order', { method: 'POST', body }),
   verifyPayment: (body) => request('/payments/razorpay/verify', { method: 'POST', body }),
-  syncPayments: () => request('/payments/reconcile', { method: 'POST', auth: true }),
+  syncPayments: (hours = 168) => request('/payments/reconcile', { method: 'POST', body: { hours }, auth: true }),
 
   banners: (all) => request(`/banners${all ? '?all=1' : ''}`),
   createBanner: (body) => request('/banners', { method: 'POST', body, auth: true }),

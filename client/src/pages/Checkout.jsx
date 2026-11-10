@@ -41,17 +41,26 @@ export default function Checkout() {
   const [checking, setChecking] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [order, setOrder] = useState(null);
-  const [online, setOnline] = useState(false);
+  const [online, setOnline] = useState(null);
+  const [configError, setConfigError] = useState(false);
   /* Replaced by the server's figures on load; these match them. */
   const [codRules, setCodRules] = useState({ advance: 200, min: 500 });
   const [editDetails, setEditDetails] = useState(false);
 
-  /* Whether the server has Razorpay keys decides if "Pay online" is real. */
-  useEffect(() => {
+  const loadPaymentConfig = () => {
+    setConfigError(false);
     api.paymentConfig().then((c) => {
       setOnline(Boolean(c.razorpay));
       if (c.codAdvance) setCodRules({ advance: c.codAdvance, min: c.codMinOrder || 0 });
-    }).catch(() => setOnline(false));
+    }).catch(() => {
+      setOnline(false);
+      setConfigError(true);
+    });
+  };
+
+  /* Whether the server has Razorpay keys decides if "Pay online" is real. */
+  useEffect(() => {
+    loadPaymentConfig();
   }, []);
 
   /* Fill from the signed-in profile so a returning shopper is not asked for
@@ -371,9 +380,26 @@ export default function Checkout() {
           {/* payment */}
           <section className="border border-line bg-surface p-6 sm:p-7" style={{ borderRadius: 'var(--r-card)' }}>
             <h2 className="text-lg font-medium">Payment method</h2>
+            {configError && (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border border-sale/30 bg-sale/5 p-3.5 text-[0.82rem] text-sale" style={{ borderRadius: 'var(--r-btn)' }}>
+                <span>Could not reach payment gateway configuration. Please retry before placing your order.</span>
+                <button type="button" onClick={loadPaymentConfig} className="btn btn-outline btn-sm shrink-0">
+                  Retry
+                </button>
+              </div>
+            )}
             <div className="mt-5 space-y-3">
               {[
-                { id: 'Prepaid', title: 'Pay online', sub: online ? 'UPI, credit or debit card, net banking — secured by Razorpay' : 'Currently unavailable' },
+                {
+                  id: 'Prepaid',
+                  title: 'Pay online',
+                  disabled: online === false,
+                  sub: online === null
+                    ? 'Checking available payment methods…'
+                    : online
+                      ? 'UPI, credit or debit card, net banking — secured by Razorpay'
+                      : 'Currently unavailable',
+                },
                 {
                   id: 'COD',
                   title: 'Cash on delivery',
@@ -492,10 +518,12 @@ export default function Checkout() {
                   )}
                 </dl>
 
-                <button type="submit" disabled={placing} className="btn btn-primary btn-lg mt-5 w-full">
+                <button type="submit" disabled={placing || online === null || configError} className="btn btn-primary btn-lg mt-5 w-full disabled:opacity-50">
                   {placing
                     ? 'Placing your order…'
-                    : advance > 0 ? `Pay ${inr(advance)} advance & place order` : `Place order · ${inr(total)}`}
+                    : online === null
+                      ? 'Checking payment options…'
+                      : advance > 0 ? `Pay ${inr(advance)} advance & place order` : `Place order · ${inr(total)}`}
                 </button>
 
                 <ul className="mt-4 space-y-2 text-[0.76rem] text-muted">

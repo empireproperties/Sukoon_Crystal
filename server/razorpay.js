@@ -18,6 +18,7 @@ const KEY_SECRET = () => process.env.RAZORPAY_KEY_SECRET || '';
 const WEBHOOK_SECRET = () => process.env.RAZORPAY_WEBHOOK_SECRET || '';
 
 export const isConfigured = () => Boolean(KEY_ID() && KEY_SECRET());
+export const isWebhookConfigured = () => Boolean(WEBHOOK_SECRET());
 export const publicKey = () => KEY_ID();
 
 let client = null;
@@ -89,10 +90,30 @@ export async function fetchOrderPayments(orderId) {
 }
 
 /** Fetch all captured/attempted payments from Razorpay in a time window. */
-export async function listPayments({ from, to, count = 100 } = {}) {
+export async function listPayments({ from, to, count = 100, skip = 0 } = {}) {
   const rzp = await sdk();
   const params = { count };
   if (from) params.from = Math.floor(from);
   if (to) params.to = Math.floor(to);
+  if (skip) params.skip = Math.floor(skip);
   return rzp.payments.all(params);
+}
+
+/** Paginates Razorpay payments.all in batches of 100 across the whole window. */
+export async function fetchAllPayments({ from, to } = {}) {
+  const all = [];
+  const count = 100;
+  for (let page = 0; page < 10; page++) {
+    const res = await listPayments({ from, to, count, skip: page * count });
+    const items = res?.items || [];
+    all.push(...items);
+    if (items.length < count) break;
+  }
+  return all;
+}
+
+/** Captures an authorized Razorpay payment (amount is in paise as returned by Razorpay). */
+export async function capturePayment(paymentId, amountPaise, currency = 'INR') {
+  const rzp = await sdk();
+  return rzp.payments.capture(paymentId, amountPaise, currency);
 }
