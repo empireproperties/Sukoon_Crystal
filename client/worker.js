@@ -1,4 +1,4 @@
-/* Cloudflare entry point for the storefront.
+﻿/* Cloudflare entry point for the storefront.
  *
  * Three jobs, and the order matters:
  *
@@ -154,6 +154,23 @@ function shopifyRedirect(url) {
 }
 
 export default {
+  /**
+   * Cron trigger: fires every 5 minutes (see wrangler.jsonc triggers.crons).
+   *
+   * Render's free tier hibernates after ~15 minutes of inactivity and returns
+   * 429 (x-render-routing: hibernate-rate-limited) while it restarts. A tiny
+   * GET to /api/health keeps the instance warm so real visitors never see it.
+   */
+  async scheduled(_event, env, _ctx) {
+    if (!env.API_ORIGIN) return;
+    try {
+      await fetch(`${env.API_ORIGIN}/api/health`, { method: 'GET' });
+    } catch {
+      /* If the backend is already restarting this will fail -- that is fine,
+         the next tick five minutes later will find it warm again. */
+    }
+  },
+
   async fetch(request, env) {
     const url = new URL(request.url);
 

@@ -487,6 +487,16 @@ app.get('/api/account/perks', requireCustomer, (req, res) => {
   });
 });
 
+/* ------------------------------------------------------------------ health */
+/* Lightweight keep-alive endpoint. The Cloudflare Worker pings this every
+   5 minutes (via a cron trigger) so Render's free-tier server never hibernates.
+   When it does hibernate, in-flight requests get 429 "hibernate-rate-limited"
+   until it restarts -- this prevents that entirely. No auth, no DB hit. */
+app.get('/api/health', (_req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ ok: true, ts: Date.now() });
+});
+
 /* ----------------------------------------------------------------- settings */
 /* `settings` is served to every visitor, so anything secret that ends up in it
    must never leave this function. auth.js falls back to storing a generated

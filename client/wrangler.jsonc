@@ -90,5 +90,13 @@
 
   "observability": {
     "enabled": true
+  },
+
+  /* Ping the Render backend every 5 minutes so it never hibernates.
+     Render's free tier sleeps after ~15 minutes of inactivity and returns
+     429 (hibernate-rate-limited) to all in-flight requests while it wakes.
+     This scheduled handler fires before that window closes. */
+  "triggers": {
+    "crons": ["*/5 * * * *"]
   }
 }
