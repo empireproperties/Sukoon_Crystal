@@ -2703,4 +2703,41 @@ app.listen(PORT, () => {
   console.log(`  Sukoon API  ->  http://localhost:${PORT}`);
   runAutoReconciliation().catch(() => {});
   scheduleNightly10pmAudit();
+  startSelfPing();
 });
+
+/* ---------------------------------------------------------------- self-ping */
+/*
+ * Render's free tier hibernates the process after ~15 minutes of inactivity
+ * and returns 429 (x-render-routing: hibernate-rate-limited) to every request
+ * that arrives while it is waking back up. This timer pings the server's own
+ * /api/health endpoint every 10 minutes, well inside that window, so it is
+ * never idle long enough to sleep.
+ *
+ * The URL is built from SITE_URL (the public Cloudflare domain) so the ping
+ * goes through the full stack and also validates the Worker is routing correctly.
+ * Falls back to the Render origin if SITE_URL is not set.
+ *
+ * This runs only in production (NODE_ENV !== 'development') so local dev is
+ * unaffected.
+ */
+function startSelfPing() {
+  if (process.env.NODE_ENV === 'development') return;
+
+  const origin = (process.env.SITE_URL || 'https://sukoon-crystal.onrender.com').replace(/\/$/, '');
+  const url    = `${origin}/api/health`;
+  const INTERVAL_MS = 10 * 60 * 1000; /* 10 minutes — well inside Render's 15-min sleep window */
+
+  const ping = () => {
+    fetch(url, { signal: AbortSignal.timeout(15000) })
+      .then((r) => {
+        if (!r.ok) console.warn(`  [keep-alive] /api/health returned ${r.status}`);
+      })
+      .catch((e) => console.warn(`  [keep-alive] ping failed: ${e.message}`));
+  };
+
+  /* Stagger the first ping by 5 minutes so it doesn't fire at startup while
+     the server is still initialising the database connection. */
+  setTimeout(() => { ping(); setInterval(ping, INTERVAL_MS); }, 5 * 60 * 1000);
+  console.log(`  Keep-alive  ->  pinging ${url} every 10 min`);
+}
