@@ -53,36 +53,69 @@ const isPublicCacheableGet = (request, url) =>
   && url.searchParams.get('all') !== '1'
   && CACHEABLE_API_PREFIXES.some((p) => url.pathname === p || url.pathname.startsWith(`${p}/`));
 
-/** Proxies GET /api/* with a brief retry on transient 429/5xx and edge caching
- *  for public catalogue reads so traffic spikes never overload the origin. */
+/** Proxies GET /api/* with a brief retry on transient 429/5xx, edge caching
+ *  for public catalogue reads, and a 24h stale-if-error fallback so visitors
+ *  never see an empty store if the free-tier origin briefly restarts. */
 async function proxyApiGet(request, url, target, ctx) {
   const canCache = isPublicCacheableGet(request, url);
   const cache = canCache && typeof caches !== 'undefined' ? caches.default : null;
   const cacheKey = cache ? new Request(url.toString(), { method: 'GET' }) : null;
+  const staleUrl = canCache ? (() => {
+    const u = new URL(url.toString());
+    u.searchParams.set('__cf_stale', '1');
+    return u.toString();
+  })() : null;
+  const staleKey = cache && staleUrl ? new Request(staleUrl, { method: 'GET' }) : null;
 
   if (cache && cacheKey) {
     const cached = await cache.match(cacheKey);
     if (cached) return cached;
   }
 
-  let res = await fetch(new Request(target, request), { redirect: 'manual' });
-  if (RETRYABLE_UPSTREAM.has(res.status)) {
-    await new Promise((r) => setTimeout(r, 650));
+  let res;
+  try {
     res = await fetch(new Request(target, request), { redirect: 'manual' });
+    if (RETRYABLE_UPSTREAM.has(res.status)) {
+      await new Promise((r) => setTimeout(r, 850));
+      res = await fetch(new Request(target, request), { redirect: 'manual' });
+    }
+  } catch (err) {
+    if (cache && staleKey) {
+      const stale = await cache.match(staleKey);
+      if (stale) return stale;
+    }
+    throw err;
   }
 
   if (cache && cacheKey && res.status === 200) {
     const headers = new Headers(res.headers);
     if (!headers.has('Cache-Control')) {
-      headers.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+      headers.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
     }
-    const cacheable = new Response(res.clone().body, {
+    const fresh = new Response(res.body, {
       status: res.status,
       statusText: res.statusText,
       headers,
     });
-    ctx?.waitUntil?.(cache.put(cacheKey, cacheable.clone()));
-    return cacheable;
+    ctx?.waitUntil?.(cache.put(cacheKey, fresh.clone()));
+
+    if (staleKey) {
+      const staleHeaders = new Headers(headers);
+      staleHeaders.set('Cache-Control', 'public, max-age=86400');
+      staleHeaders.set('X-Sukoon-Cache', 'STALE-FALLBACK');
+      const staleCopy = new Response(fresh.clone().body, {
+        status: res.status,
+        statusText: res.statusText,
+        headers: staleHeaders,
+      });
+      ctx?.waitUntil?.(cache.put(staleKey, staleCopy));
+    }
+    return fresh;
+  }
+
+  if (cache && staleKey && res.status >= 429) {
+    const stale = await cache.match(staleKey);
+    if (stale) return stale;
   }
 
   return res;

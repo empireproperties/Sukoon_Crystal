@@ -2852,16 +2852,22 @@ app.listen(PORT, () => {
 function startSelfPing() {
   if (process.env.NODE_ENV === 'development') return;
 
-  const rawOrigin = process.env.SITE_URL || process.env.Site_URL || 'https://sukoon-crystal.onrender.com';
-  const primaryOrigin = rawOrigin.replace(/\/+$/, '');
-  const primaryUrl = `${primaryOrigin}/api/health`;
-  const fallbackUrl = 'https://sukoon-crystal.onrender.com/api/health';
-  /* 4 minutes: frequent enough that even two transient errors cannot let Render's
+  const renderUrl = (process.env.RENDER_EXTERNAL_URL || 'https://sukoon-crystal.onrender.com').replace(/\/+$/, '');
+  const siteOrigin = (process.env.SITE_URL || process.env.Site_URL || '').replace(/\/+$/, '');
+  const primaryUrl = `${renderUrl}/api/health`;
+  const secondaryUrl = siteOrigin && siteOrigin !== renderUrl ? `${siteOrigin}/api/health` : '';
+  /* 4 minutes: frequent enough that transient failures cannot let Render's
      15-minute inactivity sleep timer expire. */
   const INTERVAL_MS = 4 * 60 * 1000;
 
   const pingUrl = async (target) => {
-    const r = await fetch(target, { signal: AbortSignal.timeout(12000) });
+    const r = await fetch(target, {
+      headers: {
+        'User-Agent': 'SukoonKeepAlive/1.0',
+        Accept: 'application/json',
+      },
+      signal: AbortSignal.timeout(12000),
+    });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
   };
 
@@ -2869,12 +2875,12 @@ function startSelfPing() {
     try {
       await pingUrl(primaryUrl);
     } catch (e) {
-      if (primaryUrl !== fallbackUrl) {
+      if (secondaryUrl) {
         try {
-          await pingUrl(fallbackUrl);
+          await pingUrl(secondaryUrl);
           return;
         } catch (e2) {
-          console.warn(`  [keep-alive] primary (${e.message}) and fallback (${e2.message}) pings failed`);
+          console.warn(`  [keep-alive] render (${e.message}) and site (${e2.message}) pings failed`);
           return;
         }
       }
