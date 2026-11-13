@@ -1,6 +1,14 @@
 /* Two independent sessions can be live at once — a shop owner testing her own
    storefront is signed in as both. They are stored under separate keys and the
    server scopes each token to its audience, so neither can stand in for the other. */
+import {
+  DEFAULT_PRODUCTS,
+  DEFAULT_CATEGORIES,
+  DEFAULT_SETTINGS,
+  DEFAULT_SLIDES,
+  DEFAULT_BANNERS,
+} from './catalogDefaults.js';
+
 const TOKEN_KEY = 'sukoon_admin_token';
 const CUSTOMER_TOKEN_KEY = 'sukoon_customer_token';
 
@@ -11,12 +19,80 @@ export const getCustomerToken = () => localStorage.getItem(CUSTOMER_TOKEN_KEY);
 export const setCustomerToken = (t) =>
   (t ? localStorage.setItem(CUSTOMER_TOKEN_KEY, t) : localStorage.removeItem(CUSTOMER_TOKEN_KEY));
 
-const TRANSIENT_STATUS = new Set([429, 502, 503, 504]);
-const RETRY_DELAYS = [900, 2200];
+/* -------------------------------------------------------- client-side cache */
+const CACHE_PREFIX = 'sukoon_store_cache_v3:';
 
-/* `auth` is false, 'admin', or 'customer'. Passing true still means admin so
-   existing call sites keep working. */
-async function request(path, { method = 'GET', body, auth = false } = {}) {
+function getLocalCache(key, fallback = null) {
+  try {
+    const raw = localStorage.getItem(CACHE_PREFIX + key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.data !== undefined) return parsed.data;
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function setLocalCache(key, data) {
+  try {
+    localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ ts: Date.now(), data }));
+  } catch {}
+}
+
+export function invalidateCatalogCache(key) {
+  try {
+    if (key) {
+      localStorage.removeItem(CACHE_PREFIX + key);
+    } else {
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(CACHE_PREFIX)) keysToRemove.push(k);
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+    }
+  } catch {}
+}
+
+/* ---------------------------------------------------- wake-up coordinator */
+const TRANSIENT_STATUS = new Set([429, 502, 503, 504]);
+let wakeUpPromise = null;
+
+/**
+ * Single-flight probe coordinator: when Render is hibernating on its free tier,
+ * only ONE health check probe polls the server with polite backoff. All concurrent
+ * and queued requests wait on this same promise instead of blasting Render with
+ * parallel requests that trigger 429 hibernate-rate-limited bursts.
+ */
+function waitForBackendWakeUp() {
+  if (wakeUpPromise) return wakeUpPromise;
+
+  wakeUpPromise = (async () => {
+    // 5 attempts covering ~38s total (Render cold-start is ~30-40s)
+    const intervals = [2500, 4500, 7000, 10000, 14000];
+    for (const wait of intervals) {
+      await new Promise((r) => setTimeout(r, wait));
+      try {
+        const probe = await fetch('/api/health', {
+          headers: { Accept: 'application/json' },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (probe.ok) {
+          wakeUpPromise = null;
+          return true;
+        }
+      } catch {}
+    }
+    wakeUpPromise = null;
+    return false;
+  })();
+
+  return wakeUpPromise;
+}
+
+/* ----------------------------------------------------------------- request */
+async function request(path, { method = 'GET', body, auth = false, fallback = undefined } = {}) {
   const as = auth === true ? 'admin' : auth || null;
   const headers = {};
   if (body && !(body instanceof FormData)) headers['Content-Type'] = 'application/json';
@@ -25,42 +101,80 @@ async function request(path, { method = 'GET', body, auth = false } = {}) {
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  /* Idempotent GET requests automatically retry on brief upstream cold-starts
-     or 429 wake-up spikes; mutations never retry so an order can't double-fire. */
-  const maxAttempts = method === 'GET' ? RETRY_DELAYS.length + 1 : 1;
-  let res;
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    try {
-      res = await fetch(`/api${path}`, {
-        method,
-        headers,
-        body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
+  const doFetch = async () =>
+    fetch(`/api${path}`, {
+      method,
+      headers,
+      body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
+    });
+
+  let res = null;
+  try {
+    res = await doFetch();
+  } catch {
+    res = null;
+  }
+
+  // If upstream hit 429 (hibernate-rate-limited) or connection error:
+  if (!res || TRANSIENT_STATUS.has(res.status)) {
+    // If a fallback is provided and it's a GET, return fallback immediately
+    // and let wake-up finish in the background
+    if (fallback !== undefined && method === 'GET') {
+      waitForBackendWakeUp().then((woke) => {
+        if (woke) doFetch().catch(() => {});
       });
-      if (!TRANSIENT_STATUS.has(res.status) || attempt === maxAttempts - 1) break;
-    } catch {
-      if (attempt === maxAttempts - 1) {
-        /* fetch only rejects when the request never completed — the server is down,
-           restarting, or the connection dropped. The browser's own wording for this
-           is "Failed to fetch", which tells a shop owner nothing. */
-        throw new Error('Could not reach the server. Check your connection and try again.');
+      return fallback;
+    }
+
+    // Otherwise (critical query, checkout, or login), wait for backend to finish cold-start:
+    const woke = await waitForBackendWakeUp();
+    if (woke) {
+      try {
+        res = await doFetch();
+      } catch {
+        res = null;
       }
     }
-    await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt]));
+  }
+
+  if (!res) {
+    if (fallback !== undefined) return fallback;
+    throw new Error('Connecting to store... Please retry in a few moments.');
   }
 
   if (res.status === 401 && as) {
     if (as === 'customer') {
       setCustomerToken(null);
-      /* No hard redirect — the account pages render their own sign-in prompt,
-         and a 401 on a background call should not yank the visitor off a page. */
     } else {
       setToken(null);
       if (location.pathname.includes('admin')) location.href = '/admin/login';
     }
   }
+
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  if (!res.ok) {
+    if (fallback !== undefined) return fallback;
+    throw new Error(data.error || `Request failed (${res.status})`);
+  }
+
   return data;
+}
+
+/** Stale-While-Revalidate helper for public read-only storefront queries. */
+async function cachedGet(key, path, defaultFallback) {
+  const cached = getLocalCache(key, defaultFallback);
+
+  // Background revalidation
+  request(path, { method: 'GET', fallback: cached })
+    .then((fresh) => {
+      if (fresh && (Array.isArray(fresh) ? fresh.length > 0 : Object.keys(fresh).length > 0)) {
+        setLocalCache(key, fresh);
+      }
+    })
+    .catch(() => {});
+
+  // Instant render from local cache / default bundle:
+  return cached;
 }
 
 const qs = (params = {}) => {
@@ -70,27 +184,113 @@ const qs = (params = {}) => {
   return s ? `?${s}` : '';
 };
 
+/* ------------------------------------------------- catalogue filtering helper */
+const categoriesOf = (p) => (
+  Array.isArray(p.categories) && p.categories.length
+    ? p.categories
+    : [p.category].filter(Boolean)
+);
+
+const positionOf = (p) => (Number.isFinite(Number(p.position)) ? Number(p.position) : Number.MAX_SAFE_INTEGER);
+
+const byShopOrder = (a, b) =>
+  positionOf(a) - positionOf(b)
+  || (Number(b.sold) || 0) - (Number(a.sold) || 0)
+  || String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+
+function filterProductList(allProducts, params = {}) {
+  const { category, q, zodiac, sort, featured, min, max, all } = params;
+  let list = allProducts.filter((p) => (all === '1' ? true : p.active !== false));
+  if (category && category !== 'all') list = list.filter((p) => categoriesOf(p).includes(category));
+  if (zodiac && zodiac !== 'all') list = list.filter((p) => (p.zodiac || []).includes(zodiac));
+  if (featured === '1') list = list.filter((p) => p.featured);
+  if (min) list = list.filter((p) => p.price >= +min);
+  if (max) list = list.filter((p) => p.price <= +max);
+  if (q) {
+    const t = String(q).toLowerCase();
+    list = list.filter((p) =>
+      [p.name, p.stone, p.description, p.chakra, p.element, ...(p.benefits || [])]
+        .join(' ').toLowerCase().includes(t));
+  }
+  const sorters = {
+    'price-asc': (a, b) => a.price - b.price,
+    'price-desc': (a, b) => b.price - a.price,
+    newest: (a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')),
+    popular: (a, b) => (Number(b.sold) || 0) - (Number(a.sold) || 0),
+    featured: (a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0),
+  };
+  list.sort(sorters[sort] || byShopOrder);
+  return list;
+}
+
+/* -------------------------------------------------------------------- API */
 export const api = {
   login: (email, password) => request('/auth/login', { method: 'POST', body: { email, password } }),
   me: () => request('/auth/me', { auth: true }),
   changePassword: (currentPassword, newPassword) =>
     request('/auth/password', { method: 'POST', body: { currentPassword, newPassword }, auth: true }),
 
-  settings: () => request('/settings'),
+  settings: () => cachedGet('settings', '/settings', DEFAULT_SETTINGS),
 
   /* Title, description and structured data for one URL, from the same builder
      the Cloudflare Worker uses -- see server/seo.js. */
   seoPage: (path) => request(`/seo/page${qs({ path })}`),
-  saveSettings: (patch) => request('/settings', { method: 'PUT', body: patch, auth: true }),
+  saveSettings: async (patch) => {
+    const res = await request('/settings', { method: 'PUT', body: patch, auth: true });
+    invalidateCatalogCache('settings');
+    return res;
+  },
 
-  categories: () => request('/categories'),
-  products: (params) => request(`/products${qs(params)}`),
-  product: (key) => request(`/products/${key}`),
-  createProduct: (body) => request('/products', { method: 'POST', body, auth: true }),
-  updateProduct: (id, body) => request(`/products/${id}`, { method: 'PUT', body, auth: true }),
-  /* The whole running order in one request -- see the route's comment. */
-  reorderProducts: (ids) => request('/products/reorder', { method: 'PUT', body: { ids }, auth: true }),
-  deleteProduct: (id) => request(`/products/${id}`, { method: 'DELETE', auth: true }),
+  categories: () => cachedGet('categories', '/categories', DEFAULT_CATEGORIES),
+
+  products: (params) => {
+    if (params?.all === '1' || params?.all === 1) {
+      return request(`/products${qs(params)}`, { auth: true });
+    }
+    const all = getLocalCache('products', DEFAULT_PRODUCTS);
+    // Background revalidate full products catalog
+    request('/products', { method: 'GET', fallback: all })
+      .then((fresh) => {
+        if (Array.isArray(fresh) && fresh.length > 0) {
+          setLocalCache('products', fresh);
+        }
+      })
+      .catch(() => {});
+    return Promise.resolve(filterProductList(all, params));
+  },
+
+  product: (key) => {
+    const all = getLocalCache('products', DEFAULT_PRODUCTS);
+    const found = all.find((p) => p.slug === key || p.id === key);
+    // Background revalidate
+    const bg = request(`/products/${key}`, { fallback: found });
+    if (found) {
+      bg.catch(() => {});
+      return Promise.resolve(found);
+    }
+    return bg;
+  },
+
+  createProduct: async (body) => {
+    const res = await request('/products', { method: 'POST', body, auth: true });
+    invalidateCatalogCache('products');
+    return res;
+  },
+  updateProduct: async (id, body) => {
+    const res = await request(`/products/${id}`, { method: 'PUT', body, auth: true });
+    invalidateCatalogCache('products');
+    return res;
+  },
+  reorderProducts: async (ids) => {
+    const res = await request('/products/reorder', { method: 'PUT', body: { ids }, auth: true });
+    invalidateCatalogCache('products');
+    return res;
+  },
+  deleteProduct: async (id) => {
+    const res = await request(`/products/${id}`, { method: 'DELETE', auth: true });
+    invalidateCatalogCache('products');
+    return res;
+  },
 
   upload: (file) => {
     const fd = new FormData();
@@ -104,15 +304,34 @@ export const api = {
   deleteOrder: (id) => request(`/orders/${id}`, { method: 'DELETE', auth: true }),
   track: (number) => request(`/orders/track/${encodeURIComponent(number)}`),
 
-  paymentConfig: () => request('/payments/config'),
+  paymentConfig: () =>
+    cachedGet('payment_config', '/payments/config', {
+      razorpay: true,
+      keyId: 'rzp_live_Tdo40CAxtrRUs7',
+      codAdvance: 200,
+      codMinOrder: 500,
+    }),
   createPayment: (body) => request('/payments/razorpay/order', { method: 'POST', body }),
   verifyPayment: (body) => request('/payments/razorpay/verify', { method: 'POST', body }),
   syncPayments: (hours = 168) => request('/payments/reconcile', { method: 'POST', body: { hours }, auth: true }),
 
-  banners: (all) => request(`/banners${all ? '?all=1' : ''}`),
-  createBanner: (body) => request('/banners', { method: 'POST', body, auth: true }),
-  updateBanner: (id, body) => request(`/banners/${id}`, { method: 'PUT', body, auth: true }),
-  deleteBanner: (id) => request(`/banners/${id}`, { method: 'DELETE', auth: true }),
+  banners: (all) =>
+    all ? request('/banners?all=1', { auth: true }) : cachedGet('banners', '/banners', DEFAULT_BANNERS),
+  createBanner: async (body) => {
+    const res = await request('/banners', { method: 'POST', body, auth: true });
+    invalidateCatalogCache('banners');
+    return res;
+  },
+  updateBanner: async (id, body) => {
+    const res = await request(`/banners/${id}`, { method: 'PUT', body, auth: true });
+    invalidateCatalogCache('banners');
+    return res;
+  },
+  deleteBanner: async (id) => {
+    const res = await request(`/banners/${id}`, { method: 'DELETE', auth: true });
+    invalidateCatalogCache('banners');
+    return res;
+  },
 
   events: (all) => request(`/events${all ? '?all=1' : ''}`),
   createEvent: (body) => request('/events', { method: 'POST', body, auth: true }),
@@ -176,39 +395,56 @@ export const api = {
   page: (handle) => request(`/pages/${handle}`),
   savePage: (handle, body) => request(`/pages/${handle}`, { method: 'PUT', body, auth: true }),
 
-  reviews: (params) => request(`/reviews${qs(params)}`),
+  reviews: (params) => {
+    const limit = params?.limit || 12;
+    const key = `reviews_lim_${limit}`;
+    return cachedGet(key, `/reviews${qs(params)}`, []);
+  },
 
-  /* Public by default: whoever is writing the review is a visitor, not an
-     account. The server caps the size, checks the type and rate limits the
-     address, and nothing reaches the storefront until an admin approves the
-     review. Pass `admin` when it is the shop uploading a clip a customer sent
-     them, which skips the per-address quota. */
   uploadReviewVideo: (file, { admin = false } = {}) => {
     const fd = new FormData();
     fd.append('file', file);
     return request('/reviews/video', { method: 'POST', body: fd, auth: admin && 'admin' });
   },
 
-  /* Clips already in the bucket, for attaching one without uploading it again. */
   reviewVideos: () => request('/reviews/videos', { auth: true }),
-
-  /* What this customer has earned by buying -- currently whether the
-     complimentary consultation is open to them. Personal, so it is theirs to
-     ask for and not part of the public service list. */
   accountPerks: () => request('/account/perks', { auth: 'customer' }),
 
-  /* Publishes straight away -- see the route's comment for why approval is not
-     part of this path. */
-  createReview: (body) => request('/reviews/admin', { method: 'POST', body, auth: true }),
+  createReview: async (body) => {
+    const res = await request('/reviews/admin', { method: 'POST', body, auth: true });
+    invalidateCatalogCache('reviews');
+    return res;
+  },
   allReviews: (status) => request(`/reviews/all${qs({ status })}`, { auth: true }),
   submitReview: (body) => request('/reviews', { method: 'POST', body }),
-  updateReview: (id, body) => request(`/reviews/${id}`, { method: 'PUT', body, auth: true }),
-  deleteReview: (id) => request(`/reviews/${id}`, { method: 'DELETE', auth: true }),
+  updateReview: async (id, body) => {
+    const res = await request(`/reviews/${id}`, { method: 'PUT', body, auth: true });
+    invalidateCatalogCache('reviews');
+    return res;
+  },
+  deleteReview: async (id) => {
+    const res = await request(`/reviews/${id}`, { method: 'DELETE', auth: true });
+    invalidateCatalogCache('reviews');
+    return res;
+  },
 
-  slides: (all) => request(`/slides${all ? '?all=1' : ''}`),
-  createSlide: (body) => request('/slides', { method: 'POST', body, auth: true }),
-  updateSlide: (id, body) => request(`/slides/${id}`, { method: 'PUT', body, auth: true }),
-  deleteSlide: (id) => request(`/slides/${id}`, { method: 'DELETE', auth: true }),
+  slides: (all) =>
+    all ? request('/slides?all=1', { auth: true }) : cachedGet('slides', '/slides', DEFAULT_SLIDES),
+  createSlide: async (body) => {
+    const res = await request('/slides', { method: 'POST', body, auth: true });
+    invalidateCatalogCache('slides');
+    return res;
+  },
+  updateSlide: async (id, body) => {
+    const res = await request(`/slides/${id}`, { method: 'PUT', body, auth: true });
+    invalidateCatalogCache('slides');
+    return res;
+  },
+  deleteSlide: async (id) => {
+    const res = await request(`/slides/${id}`, { method: 'DELETE', auth: true });
+    invalidateCatalogCache('slides');
+    return res;
+  },
 
   analytics: (days) => request(`/analytics/summary${qs({ days })}`, { auth: true }),
   trackVisit: (body) => request('/analytics/visit', { method: 'POST', body }).catch(() => {}),

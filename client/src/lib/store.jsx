@@ -178,16 +178,19 @@ export function useVisitTracker(pathname) {
       : ref.includes('facebook') ? 'Facebook'
       : ref ? 'Referral' : 'Direct';
     const w = window.innerWidth;
-    api.trackVisit({
-      path: pathname,
-      session,
-      source,
-      device: w < 640 ? 'mobile' : w < 1024 ? 'tablet' : 'desktop',
-      /* True whenever the page is being driven by a script rather than a
-         person. Sent so the server can leave test runs and scrapers out of the
-         visit count. */
-      automated: navigator.webdriver === true,
-    });
+    /* Defer visit tracking by 3.5 seconds so it does not compete with initial
+       catalogue rendering or cold-start probes. */
+    const timer = setTimeout(() => {
+      api.trackVisit({
+        path: pathname,
+        session,
+        source,
+        device: w < 640 ? 'mobile' : w < 1024 ? 'tablet' : 'desktop',
+        automated: navigator.webdriver === true,
+      });
+    }, 3500);
+
+    return () => clearTimeout(timer);
   }, [pathname]);
 }
 

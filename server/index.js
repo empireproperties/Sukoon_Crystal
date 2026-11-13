@@ -2851,6 +2851,10 @@ app.listen(PORT, () => {
  */
 function startSelfPing() {
   if (process.env.NODE_ENV === 'development') return;
+  if (process.env.ENABLE_SELF_PING !== 'true') {
+    console.log('  Keep-alive  ->  disabled (conserving Render free instance hours)');
+    return;
+  }
 
   const renderUrl = (process.env.RENDER_EXTERNAL_URL || 'https://sukoon-crystal.onrender.com').replace(/\/+$/, '');
   const siteOrigin = (process.env.SITE_URL || process.env.Site_URL || '').replace(/\/+$/, '');
